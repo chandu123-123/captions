@@ -3,7 +3,7 @@ import GoogleProvider from "next-auth/providers/google";
 import { dbConnection } from "@/app/lib/database"; // Ensure this exports a function to connect to MongoDB
 import { UserLogin } from "@/app/lib/model"; // Ensure this exports the Mongoose model
 import { JWT } from "next-auth/jwt";
-import { Session } from "next-auth/core/types";
+import { Session } from "next-auth";
 
 // Define the NextAuth options with type safety
 export const authOptions: NextAuthOptions = {

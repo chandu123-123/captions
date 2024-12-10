@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { transcribeAudio, translateText } from '@/lib/googleCloud';
+import { transcribeAudio} from '@/lib/googleCloud';
 import { generateSRTContent } from '@/lib/srtUtils';
 import { Readable } from 'stream';
 import * as fs from 'fs';
