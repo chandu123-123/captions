@@ -41,7 +41,7 @@ export async function POST(req: Request): Promise<NextResponse> {
         const user = await UserLogin.findOne({ email });
 
         if (user) {
-          await userlogin.updateOne({ email }, { paid: true });
+          await UserLogin.updateOne({ email }, { paid: true });
         } else {
           console.error(`User not found for email: ${email}`);
         }
