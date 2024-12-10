@@ -109,7 +109,7 @@ export async function transcribeAudio(
     // Process results
     const transcription = response.results
       .map((result: TranscriptionResult) => result.alternatives?.[0])
-      .filter((alt): alt is TranscriptionAlternative => alt !== undefined);
+      .filter((alt:any): alt is TranscriptionAlternative => alt !== undefined);
 
     // Convert to word segments
     const segments: SRTSegment[] = [];
