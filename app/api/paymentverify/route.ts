@@ -61,7 +61,7 @@ export async function POST(req: Request): Promise<NextResponse> {
         status: 400,
       });
     }
-  } catch (error) {
+  } catch (error:any) {
     console.error("Error during payment verification:", error);
     return NextResponse.json({
       message: "Internal Server Error",

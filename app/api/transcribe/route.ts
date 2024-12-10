@@ -61,7 +61,7 @@ const getAudioProperties = async (audioFile: File): Promise<{ sampleRate: number
     } else {
       throw new Error('Failed to extract metadata');
     }
-  } catch (err) {
+  } catch (err:any) {
     console.error('Error extracting audio properties:', err);
     throw new Error(`Failed to extract audio properties: ${err.message}`);
   }
