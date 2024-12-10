@@ -1,0 +1,280 @@
+"use client";
+
+import { useState, useRef, useEffect } from 'react';
+import { useSession } from "next-auth/react";
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { FileAudio, Languages, FileOutput, Upload, Lock } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import AudioPlayer from '@/components/AudioPlayer';
+import { languages } from '@/lib/languages';
+import { convertToUTF8 } from '@/lib/srtUtils';
+import { isPhoneticSupported } from '@/lib/phoneticMapping';
+import DemoVideo from '@/components/DemoVideo';
+import { useCreditsStore } from '@/store/useCreditsStore';
+
+export default function CaptionGenerator() {
+  const { data: session } = useSession();
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [audioUrl, setAudioUrl] = useState('');
+  const [sourceLanguage, setSourceLanguage] = useState('');
+  const [targetLanguage, setTargetLanguage] = useState('');
+
+  const [outputFormat, setOutputFormat] = useState('translated');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+  const initializeCredits = useCreditsStore((state) => state.initializeCredits);
+  const credits = useCreditsStore((state) => state.credits); // Access the current credits
+  const deductCredits = useCreditsStore((state) => state.deductCredits);
+
+  useEffect(() => {
+    if (session) {
+      initializeCredits(session.user.email);
+    }
+  }, [session]);
+
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!session) return;
+    const file = e.target.files?.[0];
+    if (file) {
+      setAudioFile(file);
+      setAudioUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!session || !audioFile || !sourceLanguage || !targetLanguage) return;
+
+    setIsProcessing(true);
+    const formData = new FormData();
+    formData.append('audio', audioFile);
+    formData.append('sourceLanguage', sourceLanguage);
+    formData.append('targetLanguage', targetLanguage);
+    formData.append('outputFormat', outputFormat);
+
+    try {
+      
+
+     if (!session) return;
+  
+     if (credits === 0) {
+      toast({
+        title: "Insufficient Credits",
+        description: "Please add credits to generate captions.",
+        variant: "destructive",
+      });
+      return;
+     }
+
+
+
+      const response = await fetch('/api/transcribe', {
+        method: 'POST',
+        body: formData,
+      });
+
+
+      if (!response.ok) {
+        throw new Error('Failed to process audio');
+      }
+      
+      // await updateUserCredits(session?.user.email,1)
+     
+        
+      const data = await response.json();
+   console.log("hello")
+     let data2=data.srtContent
+     if(targetLanguage!=sourceLanguage){
+      const claude= await fetch(`/api/claudeai`,{
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body:JSON.stringify({ filecont:data.srtContent,target:targetLanguage,email:session.user.email,source:sourceLanguage})
+      });
+      const data4 = await claude.json();
+      data2=data4.msg
+      if(!claude.ok){
+        throw new Error("something is wrong")
+      }
+    }
+    const respons = await fetch(`/api/decredits?email=${session?.user.email}`,{
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const dat = await respons.json();
+      console.log(dat)
+      const isSuccess = deductCredits(1);
+      
+      const utf8Content = convertToUTF8(data2);
+      downloadSRT(utf8Content);
+
+      toast({
+        title: "Success!",
+        description: "Your captions have been generated successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate captions. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const downloadSRT = (content: string) => {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'captions.srt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-8  m-auto flex-col justify-center items-center w-full max-w-4xl">
+      <Card className="p-8">
+        <div className="space-y-6">
+          <div 
+            className={`relative group rounded-xl border-2 border-dashed p-8 transition-all ${
+              session 
+                ? "hover:border-primary/50 hover:bg-muted/50 border-border cursor-pointer" 
+                : "border-muted bg-muted/10"
+            }`}
+            onClick={() => session && fileInputRef.current?.click()}
+          >
+            {!session && (
+              <div className="absolute inset-0 backdrop-blur-[2px] bg-background/60 flex items-center justify-center rounded-lg">
+                <div className="text-center space-y-3 px-4 py-6 bg-card rounded-lg shadow-lg">
+                  <Lock className="h-8 w-8 mx-auto text-primary" />
+                  <p className="text-sm font-medium">Sign in to upload audio files</p>
+                </div>
+              </div>
+            )}
+            <div className="text-center space-y-4">
+              <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                <FileAudio className="h-8 w-8 text-primary" />
+              </div>
+              <div>
+                <p className="font-semibold text-lg">
+                  {session ? "Click to upload" : "Audio Upload"}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  MP3, WAV, or M4A (max. 500MB)
+                </p>
+              </div>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept="audio/*"
+              onChange={handleFileChange}
+              disabled={!session}
+            />
+          </div>
+
+          {audioUrl && (
+            <div className="rounded-lg border bg-card p-4">
+              <AudioPlayer audioUrl={audioUrl} />
+            </div>
+          )}
+
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="space-y-2.5">
+              <label className="text-sm font-medium">Source Language</label>
+              <Select value={sourceLanguage} onValueChange={setSourceLanguage} disabled={!session}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select language" />
+                </SelectTrigger>
+                <SelectContent>
+                  {languages.map((lang) => (
+                    <SelectItem key={lang.code} value={lang.code}>
+                      {lang.name} {isPhoneticSupported(lang.code) && '(Phonetic Available)'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2.5">
+              <label className="text-sm font-medium">Target Language</label>
+              <Select value={targetLanguage} onValueChange={setTargetLanguage} disabled={!session}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select language" />
+                </SelectTrigger>
+                <SelectContent>
+                  {languages.map((lang) => (
+                    <SelectItem key={lang.code} value={lang.code}>
+                      {lang.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2.5">
+              <label className="text-sm font-medium">Output Format</label>
+              <Select value={outputFormat} onValueChange={setOutputFormat} disabled={!session}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select format" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="translated">Convert</SelectItem>
+                  {/* <SelectItem 
+                    value="phonetic"
+                    disabled={!isPhoneticSupported(sourceLanguage)}
+                  >
+                    Phonetic (Romanized)
+                  </SelectItem>
+                  <SelectItem 
+                    value="both"
+                    disabled={!isPhoneticSupported(sourceLanguage)}
+                  >
+                    Both Translation & Phonetic
+                  </SelectItem> */}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={handleSubmit}
+            disabled={!session || !audioFile || !sourceLanguage || !targetLanguage || isProcessing}
+          >
+            {isProcessing ? (
+              "Processing..."
+            ) : (
+              <>
+                <FileOutput className="mr-2 h-4 w-4" />
+                Generate Captions
+              </>
+            )}
+          </Button>
+        </div>
+      </Card>
+
+      <div id="demo">
+        <DemoVideo />
+      </div>
+
+      <div className="text-center text-sm text-muted-foreground">
+        <p>Supported formats: MP3, WAV, M4A • Max file size: 500MB</p>
+      </div>
+    </div>
+  );
+}
