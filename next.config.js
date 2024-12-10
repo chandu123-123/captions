@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  //output: 'export',
+  experimental: {
+    appDir: true,  // Enables the App Router (app/ directory)
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },

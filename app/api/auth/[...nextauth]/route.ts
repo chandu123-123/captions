@@ -54,7 +54,7 @@ export const authOptions: NextAuthOptions = {
   },
 };
 
-
+const handler = NextAuth(authOptions);
 
 // Export handler for GET and POST requests
-export default (req, res) => NextAuth(req, res, authOptions);
+export default handler; 

@@ -62,7 +62,7 @@
     "lucide-react": "^0.446.0",
     "mongoose": "^8.8.3",
     "music-metadata": "^10.6.2",
-    "next": "13.5.1",
+    "next": "^15.0.4",
     "next-auth": "^4.24.10",
     "next-themes": "^0.3.0",
     "node-wav": "^0.0.2",
