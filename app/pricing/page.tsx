@@ -1,11 +1,7 @@
-"use client"
-
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSession } from "next-auth/react";
 import BuyProduct from "@/components/razorpay/BuyProduct";
-
-
 
 const plans = [
   {
@@ -49,7 +45,7 @@ const plans = [
 
 export default function PricingPage() {
   const { data: session } = useSession();
- 
+
   return (
     <div className="py-16 container">
       <div className="text-center space-y-4 mb-12">
@@ -95,15 +91,23 @@ export default function PricingPage() {
                   </li>
                 ))}
               </ul>
-             {session?.user.email ?
-             
-               <Button className="w-full" variant={plan.popular ? "default" : "outline"}>
-                  <BuyProduct details={plan} email={session?.user.email}/>
-                </Button>:
-                 <Button className="w-full" variant={plan.popular ? "default" : "outline"}>
-                   Login 
-               </Button>
-              }
+              {session?.user.email ? (
+                <Button
+                  className="w-full"
+                  variant={plan.popular ? "default" : "outline"}
+                >
+                  <BuyProduct
+                    details={{
+                      email: session?.user.email,
+                      details: plan, // Pass plan data as 'details' property
+                    }}
+                  />
+                </Button>
+              ) : (
+                <Button className="w-full" variant={plan.popular ? "default" : "outline"}>
+                  Login
+                </Button>
+              )}
             </div>
           </div>
         ))}
