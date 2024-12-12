@@ -56,18 +56,24 @@ export const outputFormats = [
 export function generateMockSRT() {
   const mockSegments = [
     {
-      start: 1,
-      end: 4,
+      startTime: 1,
+      endTime: 4,
+      start: 1, // Adding required property
+      end: 4,   // Adding required property
       text: 'Welcome to our video presentation'
     },
     {
-      start: 4.5,
-      end: 8,
+      startTime: 4.5,
+      endTime: 8,
+      start: 4.5, // Adding required property
+      end: 8,     // Adding required property
       text: 'Today we\'ll be discussing important topics'
     },
     {
-      start: 8.5,
-      end: 12,
+      startTime: 8.5,
+      endTime: 12,
+      start: 8.5, // Adding required property
+      end: 12,    // Adding required property
       text: 'Let\'s begin with the first point'
     }
   ];
