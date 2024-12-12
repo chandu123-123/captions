@@ -86,7 +86,7 @@ export async function transcribeAudio(
       encoding: typeLang,
       sampleRateHertz: sampleRate,
       languageCode: languageCode,
-      alternativeLanguageCodes: ['en-US'],
+      alternativeLanguageCodes: ['en-US','en-IN'],
       enableWordTimeOffsets: true,
       model: 'default',
       audioChannelCount: channels,

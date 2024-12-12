@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { transcribeAudio } from '@/lib/googleCloud';
-import { generateSRTContent } from '@/lib/srtUtils';
+import { generateSRTContent,SRTSegment } from '@/lib/srtUtils';
 import * as mm from 'music-metadata';
+
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,16 +14,19 @@ interface AudioSegment {
   text: string;
 }
 
+
+
 interface AudioProperties {
   sampleRate: number;
   channels: number;
 }
 
-interface SRTSegment {
-  startTime: number;
-  endTime: number;
-  text: string;
-}
+// interface SRTSegment {
+//   startTime: number;
+//   endTime: number;
+//   text: string;
+// }
+
 
 // Constants
 const SILENCE_THRESHOLD = 0.01;
@@ -124,13 +128,20 @@ const getSpeechToTextEncoding = (mimeType: string): string => {
 };
 
 // Type guard to check if a segment has startTime
-const hasStartTime = (segment: any): segment is AudioSegment | SRTSegment => {
-  return typeof segment.startTime === 'number';
+const hasStartTime = (segment: unknown): segment is SRTSegment => {
+  return (
+    typeof segment === 'object' &&
+    segment !== null &&
+    'startTime' in segment &&  // Checks for startTime property
+    typeof (segment as any).startTime === 'number'
+  );
 };
+
 
 // Main POST handler
 export async function POST(request: Request) {
   try {
+    console.log("transcribeee")
     // Parse form data
     const formData = await request.formData();
     const audioFile = formData.get('audio') as File | null;
@@ -167,20 +178,21 @@ export async function POST(request: Request) {
       ]);
 
       // Merge and sort segments
-      const allSegments :  SRTSegment[] = [
+      const allSegments: SRTSegment[] = [
         ...speechSegments,
         ...silenceSegments
       ].filter(hasStartTime) // Type narrowing to ensure `startTime` exists
-        .sort((a, b) => a.startTime - b.startTime);
+       .sort((a, b) => a.startTime - b.startTime);
+      console.log(allSegments)
 
       // Generate SRT content
-      // const srtContent = generateSRTContent(allSegments);
-      
-      // return NextResponse.json({ 
-      //   success: true,
-      //   srtContent,
-      //   segments: allSegments
-      // });
+      const srtContent = generateSRTContent(allSegments);
+      console.log("fdfd");
+      return NextResponse.json({ 
+        success: true,
+        srtContent,
+        segments: allSegments
+      });
 
     } catch (error) {
       console.error('Audio processing error:', error);

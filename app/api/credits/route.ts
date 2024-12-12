@@ -8,7 +8,7 @@ export async function GET(req: Request): Promise<NextResponse> {
 
     const url = new URL(req.url);
     const email = url.searchParams.get("email");
-    
+    await dbConnection();
     if (!email) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
@@ -17,7 +17,7 @@ export async function GET(req: Request): Promise<NextResponse> {
       return NextResponse.json({ msg: "Invalid email format" }, { status: 400 });
     }
 
-    await dbConnection();
+   
 
     const user = await UserLogin.findOne({ email });
 
@@ -26,7 +26,6 @@ export async function GET(req: Request): Promise<NextResponse> {
     }
 
     const credits = user.credits;
-  console.log(credits)
     // Return the credits in the response
     return NextResponse.json({ credits });
   } catch (error: any) {

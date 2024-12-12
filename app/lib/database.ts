@@ -7,7 +7,7 @@ export async function dbConnection(): Promise<void> {
     }
 
     await mongoose.connect(process.env.MONGO);
-    console.log("Database connected");
+    //console.log("Database connected");
   } catch (err) {
     console.error("Error connecting to database:", err);
     throw err; // Optional: rethrow the error if needed

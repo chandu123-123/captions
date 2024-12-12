@@ -24,11 +24,11 @@ export async function GET(req: Request): Promise<NextResponse> {
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
-    console.log("hello")
+    
     const credit = user.credits;
     user.credits = user.credits-1;
     await user.save();
-  console.log("jelel")
+ 
     // Return the credits in the response
     return NextResponse.json({ credit});
   } catch (error: any) {

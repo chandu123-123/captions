@@ -71,23 +71,24 @@ export default function CaptionGenerator() {
      }
 
 
+   
 
       const response = await fetch('/api/transcribe', {
         method: 'POST',
         body: formData,
       });
 
-
       if (!response.ok) {
         throw new Error('Failed to process audio');
       }
-      
+          
       // await updateUserCredits(session?.user.email,1)
      
         
       const data = await response.json();
    console.log("hello")
      let data2=data.srtContent
+     console.log(data2)
      if(targetLanguage!=sourceLanguage){
       const claude= await fetch(`/api/claudeai`,{
         method: 'POST',
