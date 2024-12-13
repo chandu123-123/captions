@@ -25,7 +25,7 @@ interface ToolUseBlock {
 }
 
 type MsgContent = ContentBlock | ToolUseBlock;
-export const runtime = 'edge';
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     // Connect to the database
