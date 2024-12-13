@@ -3,13 +3,34 @@ import { TranslationServiceClient } from '@google-cloud/translate';
 import * as path from 'path';  // Import 'path' module for path joining
 import { SRTSegment } from './srtUtils';
 
+let credentials;
+try {
+  credentials = JSON.parse(process.env.GOOGLE_CLOUD_CREDENTIALS || '{}');
+  if (!credentials.client_email || !credentials.private_key) {
+    throw new Error('Invalid credentials format');
+  }
+} catch (error) {
+  console.error('Error parsing Google Cloud credentials:', error);
+  throw new Error('Failed to initialize Google Cloud credentials');
+}
+
+if (process.env.NODE_ENV === 'production') {
+  console.log('Credentials check:', {
+    hasClientEmail: !!credentials.client_email,
+    hasPrivateKey: !!credentials.private_key,
+    hasProjectId: !!credentials.project_id
+  });
+}
+
 // Initialize clients using credentials from environment variable
 const speechClient = new SpeechClient({
-  credentials: JSON.parse(process.env.GOOGLE_CLOUD_CREDENTIALS || '{}'),
+  credentials,
+  projectId: credentials.project_id,
 });
 
 const translationClient = new TranslationServiceClient({
-  credentials: JSON.parse(process.env.GOOGLE_CLOUD_CREDENTIALS || '{}'),
+  credentials,
+  projectId: credentials.project_id,
 });
 
 function getSpeechToTextEncoding(mimeType: string): protos.google.cloud.speech.v1.RecognitionConfig.AudioEncoding {
