@@ -144,6 +144,67 @@ export default function CaptionGenerator() {
     URL.revokeObjectURL(url);
   };
 
+  const handleClaudeRequest = async (text: string, retries = 2) => {
+    try {
+      const response = await fetch('/api/claudeai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 504 && retries > 0) {
+          // Wait 2 seconds before retrying
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          return handleClaudeRequest(text, retries - 1);
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+
+    } catch (error) {
+      console.error('Error processing with Claude:', error);
+      throw new Error('Failed to process text. Please try again with a smaller portion.');
+    }
+  };
+
+  const chunkText = (text: string, maxChunkSize = 4000) => {
+    const chunks = [];
+    let currentChunk = '';
+
+    const sentences = text.split(/[.!?]+/);
+    
+    for (const sentence of sentences) {
+      if ((currentChunk + sentence).length > maxChunkSize) {
+        chunks.push(currentChunk.trim());
+        currentChunk = sentence;
+      } else {
+        currentChunk += sentence + '. ';
+      }
+    }
+    
+    if (currentChunk) {
+      chunks.push(currentChunk.trim());
+    }
+    
+    return chunks;
+  };
+
+  // Usage
+  const processLargeText = async (text: string) => {
+    const chunks = chunkText(text);
+    const results = [];
+    
+    for (const chunk of chunks) {
+      const result = await handleClaudeRequest(chunk);
+      results.push(result);
+    }
+    
+    return results.join(' ');
+  };
+
   return (
     <div className="space-y-8  m-auto flex-col justify-center items-center w-full max-w-4xl">
       <Card className="p-8">

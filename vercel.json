@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/claudeai/*.ts": {
+      "maxDuration": 60
+    }
+  }
+} 
