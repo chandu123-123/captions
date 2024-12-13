@@ -1,4 +1,5 @@
 // pages/api/claude.ts
+// pages/api/claude.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { Anthropic } from '@anthropic-ai/sdk';
 import { isEmail } from 'validator';
@@ -24,9 +25,7 @@ interface ToolUseBlock {
 }
 
 type MsgContent = ContentBlock | ToolUseBlock;
-
-export const runtime = 'edge'; // Use edge runtime for better performance
-
+export const runtime = 'edge';
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     // Connect to the database
@@ -60,7 +59,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // Send the message to Claude
     const msg = await anthropic.messages.create({
       model: "claude-3-5-sonnet-20240620",
-      max_tokens: 500,
+      max_tokens: 1000,
       messages: [
         {
           role: "user",
@@ -85,3 +84,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

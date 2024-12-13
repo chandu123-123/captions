@@ -15,6 +15,10 @@ import { isPhoneticSupported } from '@/lib/phoneticMapping';
 import DemoVideo from '@/components/DemoVideo';
 import { useCreditsStore } from '@/store/useCreditsStore';
 
+interface ClaudeResponse {
+  msg: string;
+}
+
 export default function CaptionGenerator() {
   const { data: session } = useSession();
   const [audioFile, setAudioFile] = useState<File | null>(null);
@@ -144,7 +148,7 @@ export default function CaptionGenerator() {
     URL.revokeObjectURL(url);
   };
 
-  const handleClaudeRequest = async (text: string, retries = 2) => {
+  const handleClaudeRequest = async (text: string, retries = 2): Promise<ClaudeResponse> => {
     try {
       const response = await fetch('/api/claudeai', {
         method: 'POST',
@@ -161,7 +165,7 @@ export default function CaptionGenerator() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data: ClaudeResponse = await response.json();
       return data;
 
     } catch (error) {
@@ -193,13 +197,13 @@ export default function CaptionGenerator() {
   };
 
   // Usage
-  const processLargeText = async (text: string) => {
+  const processLargeText = async (text: string): Promise<string> => {
     const chunks = chunkText(text);
-    const results = [];
+    const results: string[] = [];
     
     for (const chunk of chunks) {
       const result = await handleClaudeRequest(chunk);
-      results.push(result);
+      results.push(result.msg);
     }
     
     return results.join(' ');
