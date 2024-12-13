@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "app/api/claudeai/route": {
+      "maxDuration": 90
+    },
+    "app/api/transcribe/route": {
+      "maxDuration": 60
+    }
+  }
+} 
