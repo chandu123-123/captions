@@ -1,195 +1,138 @@
-import { SpeechClient } from '@google-cloud/speech';
+import { SpeechClient, protos } from '@google-cloud/speech';
 import { TranslationServiceClient } from '@google-cloud/translate';
-import * as path from 'path';
+import * as path from 'path';  // Import 'path' module for path joining
+import { SRTSegment } from './srtUtils';
 
-// Types for Google Cloud Speech-to-Text responses
-interface WordInfo {
-  startTime: {
-    seconds?: number | string;
-    nanos?: number;
-  };
-  endTime: {
-    seconds?: number | string;
-    nanos?: number;
-  };
-  word: string;
-}
-
-interface TranscriptionAlternative {
-  transcript?: string;
-  confidence?: number;
-  words?: WordInfo[];
-}
-
-interface TranscriptionResult {
-  alternatives?: TranscriptionAlternative[];
-  languageCode?: string;
-}
-
-// SRT segment interface
-export interface SRTSegment {
-  start: number;
-  end: number;
-  text: string;
-}
-
-// Configuration interface
-interface TranscriptionConfig {
-  encoding: string;
-  sampleRateHertz: number;
-  languageCode: string;
-  alternativeLanguageCodes: string[];
-  enableWordTimeOffsets: boolean;
-  model: string;
-  audioChannelCount: number;
-  useEnhanced: boolean;
-  automaticPunctuation: boolean;
-}
-
-// Initialize clients
-const credentialsPath = path.join('C:', 'Users', 'Chand', 'Downloads', 'credentials.json');
-
+// Initialize clients using credentials from environment variable
 const speechClient = new SpeechClient({
-  keyFilename: credentialsPath,
+  credentials: JSON.parse(process.env.GOOGLE_CLOUD_CREDENTIALS || '{}'),
 });
 
 const translationClient = new TranslationServiceClient({
-  keyFilename: credentialsPath,
+  credentials: JSON.parse(process.env.GOOGLE_CLOUD_CREDENTIALS || '{}'),
 });
 
-/**
- * Convert time objects to seconds
- */
-function timeToSeconds(time: { seconds?: number | string; nanos?: number }): number {
-  const seconds = Number(time.seconds || 0);
-  const nanos = Number(time.nanos || 0);
-  return seconds + nanos / 1e9;
+function getSpeechToTextEncoding(mimeType: string): protos.google.cloud.speech.v1.RecognitionConfig.AudioEncoding {
+  // Normalize the MIME type to lowercase
+  const normalizedMime = mimeType.toLowerCase();
+  
+  const encodingMap: Record<string, protos.google.cloud.speech.v1.RecognitionConfig.AudioEncoding> = {
+    'audio/wav': protos.google.cloud.speech.v1.RecognitionConfig.AudioEncoding.LINEAR16,
+    'audio/mpeg': protos.google.cloud.speech.v1.RecognitionConfig.AudioEncoding.MP3,
+    'audio/mp3': protos.google.cloud.speech.v1.RecognitionConfig.AudioEncoding.MP3,  // Added this
+    'mp3': protos.google.cloud.speech.v1.RecognitionConfig.AudioEncoding.MP3,        // Added this
+    'audio/aac': protos.google.cloud.speech.v1.RecognitionConfig.AudioEncoding.AMR,
+    'audio/ogg': protos.google.cloud.speech.v1.RecognitionConfig.AudioEncoding.OGG_OPUS,
+    'audio/flac': protos.google.cloud.speech.v1.RecognitionConfig.AudioEncoding.FLAC,
+    'audio/mp4': protos.google.cloud.speech.v1.RecognitionConfig.AudioEncoding.MP3,
+    'audio/aiff': protos.google.cloud.speech.v1.RecognitionConfig.AudioEncoding.LINEAR16,
+    'audio/opus': protos.google.cloud.speech.v1.RecognitionConfig.AudioEncoding.OGG_OPUS
+  };
+  
+  const encoding = encodingMap[normalizedMime];
+  if (!encoding) {
+    console.error(`Unsupported MIME type: ${mimeType}, normalized: ${normalizedMime}`);
+    // Default to MP3 if type not found
+    return protos.google.cloud.speech.v1.RecognitionConfig.AudioEncoding.MP3;
+  }
+  return encoding;
 }
 
-/**
- * Transcribe audio buffer to text with timestamps
- */
-export async function transcribeAudio(
-  audioBuffer: Buffer,
-  languageCode: string,
-  typeLang: string,
-  sampleRate: number,
-  channels: number
-): Promise<SRTSegment[]> {
-  try {
-    // Prepare audio configuration
-    const audio = {
-      content: audioBuffer.toString('base64'),
-    };
+export async function transcribeAudio(audioBuffer: Buffer, languageCode: string,typelang :string,sampleRate:number,channels:number): Promise<SRTSegment[]> {
+  const audio = {
+    content: audioBuffer.toString('base64'),
+  };
 
-    const config: TranscriptionConfig = {
-      encoding: typeLang,
-      sampleRateHertz: sampleRate,
-      languageCode: languageCode,
-      alternativeLanguageCodes: ['en-US','en-IN'],
-      enableWordTimeOffsets: true,
-      model: 'default',
-      audioChannelCount: channels,
-      useEnhanced: true,
-      automaticPunctuation: true,
-    };
+  const config = {
+    encoding: getSpeechToTextEncoding(typelang),
+    sampleRateHertz: sampleRate, // Match this to the sample rate of your WAV file
+    languageCode: languageCode,  // Primary language (Telugu)
+    alternativeLanguageCodes: ['en-US','en-IN'],  // English as secondary language
+    enableWordTimeOffsets: true,  // To get word-level timestamps
+    model: 'default',  // You can experiment with different models
+    audioChannelCount: channels, // Set to 1 for mono audio
+    useEnhanced: true, // Enable enhanced model for better accuracy if available
+    automaticPunctuation: true,  // Adds punctuation marks to transcriptions
 
-    const request:any = {
-      audio,
-      config,
-    };
+  };
 
-    // Make API call
-    const [response]: any = await speechClient.recognize(request);
+  const request = {
+    audio,
+    config,
+  };
 
-    if (!response.results || response.results.length === 0) {
-      throw new Error('No transcription results received');
-    }
+  const [response] = await speechClient.recognize(request);
+  console.log('API Response:', response);
 
-    // Process results
-    const transcription = response.results
-      .map((result: TranscriptionResult) => result.alternatives?.[0])
-      .filter((alt:any): alt is TranscriptionAlternative => alt !== undefined);
+  const transcription = response.results
+    ?.map(result => result.alternatives?.[0])
+    .filter(alt => alt !== undefined);
 
-    // Convert to word segments
-    const segments: SRTSegment[] = [];
+  const segments: SRTSegment[] = [];
+  let currentSegment: SRTSegment | null = null;
 
-    transcription.forEach((result: TranscriptionAlternative) => {
-      if (!result.words) return;
+  // Convert transcription to smaller segments
+  transcription?.forEach(result => {
+    result?.words?.forEach((word, index) => {
+      const startTime =
+        Number(word.startTime?.seconds || 0) + Number(word.startTime?.nanos || 0) / 1e9;
+      const endTime =
+        Number(word.endTime?.seconds || 0) + Number(word.endTime?.nanos || 0) / 1e9;
 
-      result.words.forEach((word: WordInfo) => {
-        const startTime = timeToSeconds(word.startTime);
-        const endTime = timeToSeconds(word.endTime);
+      // Create a segment for each word
+      const segment: SRTSegment = {
+        start: startTime,
+        end: endTime,
+        text: word.word || '',
+      };
 
-        segments.push({
-          start: startTime,
-          end: endTime,
-          text: word.word,
-        });
-      });
+      segments.push(segment);
     });
+  });
 
-    // Group words into pairs
-    const reducedSegments: SRTSegment[] = [];
+  // Now, group exactly two consecutive words for each caption
+  const reducedSegments: SRTSegment[] = [];
 
-    for (let i = 0; i < segments.length; i += 2) {
-      const firstWord = segments[i];
-      const secondWord = segments[i + 1];
+  for (let i = 0; i < segments.length; i += 2) {
+    const firstWord = segments[i];
+    const secondWord = segments[i + 1];
 
-      if (secondWord) {
-        reducedSegments.push({
-          start: firstWord.start,
-          end: secondWord.end,
-          text: `${firstWord.text} ${secondWord.text}`,
-        });
-      } else {
-        reducedSegments.push({
-          start: firstWord.start,
-          end: firstWord.end,
-          text: firstWord.text,
-        });
-      }
+    // Combine two words into a single caption
+    if (secondWord) {
+      reducedSegments.push({
+        start: firstWord.start,
+        end: secondWord.end,
+       
+        text: `${firstWord.text} ${secondWord.text}`,
+      });
+    } else {
+      // If it's the last word and no pair exists, add it as its own caption
+      reducedSegments.push({
+        start: firstWord.start,
+        end: firstWord.end,
+     
+        text: firstWord.text,
+      });
     }
-
-    return reducedSegments;
-
-  } catch (error) {
-    console.error('Transcription error:', error);
-    throw new Error(`Failed to transcribe audio: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
+
+  console.log(reducedSegments);
+
+  return reducedSegments;
+
 }
 
-/**
- * Translate text to target language
- */
-export async function translateText(
-  text: string,
-  targetLanguage: string
-): Promise<string> {
-  try {
-    const projectId = process.env.GOOGLE_CLOUD_PROJECT;
+// export async function translateText(text: string, targetLanguage: string): Promise<string> {
+//   const projectId = process.env.GOOGLE_CLOUD_PROJECT;
+//   const location = 'global';
 
-    if (!projectId) {
-      throw new Error('GOOGLE_CLOUD_PROJECT environment variable is not set');
-    }
+//   const request = {
+//     parent: `projects/${projectId}/locations/${location}`,
+//     contents: [text],
+//     mimeType: 'text/plain',
+//     targetLanguageCode: targetLanguage,
+//   };
 
-    const request = {
-      parent: `projects/${projectId}/locations/global`,
-      contents: [text],
-      mimeType: 'text/plain',
-      targetLanguageCode: targetLanguage,
-    };
-
-    const [response] = await translationClient.translateText(request);
-
-    if (!response.translations || response.translations.length === 0) {
-      throw new Error('No translation results received');
-    }
-
-    return response.translations[0].translatedText || text;
-
-  } catch (error) {
-    console.error('Translation error:', error);
-    throw new Error(`Failed to translate text: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-}
+//   const [response] = await translationClient.translateText(request);
+//   return response.translations?.[0]?.translatedText || text;
+// }

@@ -1,5 +1,5 @@
 export interface SRTSegment {
-  startTime: any;
+ 
   start: number;
   end: number;
   text: string;

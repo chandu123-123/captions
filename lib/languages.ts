@@ -1,7 +1,7 @@
 import { generateSRTContent } from './srtUtils';
 
 export const languages = [
-  { code: 'te', name: 'Telugu (General)' },
+
   { code: 'te-IN', name: 'Telugu (India)' },
   { code: 'hi-IN', name: 'Hindi (India)' },
   { code: 'ta-IN', name: 'Tamil (India)' },
@@ -56,24 +56,18 @@ export const outputFormats = [
 export function generateMockSRT() {
   const mockSegments = [
     {
-      startTime: 1,
-      endTime: 4,
-      start: 1, // Adding required property
-      end: 4,   // Adding required property
+      start: 1,
+      end: 4,
       text: 'Welcome to our video presentation'
     },
     {
-      startTime: 4.5,
-      endTime: 8,
-      start: 4.5, // Adding required property
-      end: 8,     // Adding required property
+      start: 4.5,
+      end: 8,
       text: 'Today we\'ll be discussing important topics'
     },
     {
-      startTime: 8.5,
-      endTime: 12,
-      start: 8.5, // Adding required property
-      end: 12,    // Adding required property
+      start: 8.5,
+      end: 12,
       text: 'Let\'s begin with the first point'
     }
   ];
