@@ -3,35 +3,42 @@ import { TranslationServiceClient } from '@google-cloud/translate';
 import * as path from 'path';  // Import 'path' module for path joining
 import { SRTSegment } from './srtUtils';
 
-let credentials;
-try {
-  credentials = JSON.parse(process.env.GOOGLE_CLOUD_CREDENTIALS || '{}');
-  if (!credentials.client_email || !credentials.private_key) {
-    throw new Error('Invalid credentials format');
-  }
-} catch (error) {
-  console.error('Error parsing Google Cloud credentials:', error);
-  throw new Error('Failed to initialize Google Cloud credentials');
-}
-
-if (process.env.NODE_ENV === 'production') {
-  console.log('Credentials check:', {
-    hasClientEmail: !!credentials.client_email,
-    hasPrivateKey: !!credentials.private_key,
-    hasProjectId: !!credentials.project_id
-  });
-}
-
 // Initialize clients using credentials from environment variable
-const speechClient = new SpeechClient({
-  credentials,
-  projectId: credentials.project_id,
-});
+let speechClient: SpeechClient;
+let translationClient: TranslationServiceClient;
 
-const translationClient = new TranslationServiceClient({
-  credentials,
-  projectId: credentials.project_id,
-});
+try {
+  const credentials = process.env.GOOGLE_CLOUD_CREDENTIALS;
+  
+  if (!credentials) {
+    throw new Error('GOOGLE_CLOUD_CREDENTIALS environment variable is not set');
+  }
+
+  const parsedCredentials = JSON.parse(credentials);
+  
+  if (!parsedCredentials.client_email || !parsedCredentials.private_key) {
+    console.error('Credentials content:', JSON.stringify({
+      hasClientEmail: !!parsedCredentials.client_email,
+      hasPrivateKey: !!parsedCredentials.private_key,
+      keys: Object.keys(parsedCredentials)
+    }));
+    throw new Error('Missing required credential fields');
+  }
+
+  speechClient = new SpeechClient({
+    credentials: parsedCredentials,
+    projectId: parsedCredentials.project_id,
+  });
+
+  translationClient = new TranslationServiceClient({
+    credentials: parsedCredentials,
+    projectId: parsedCredentials.project_id,
+  });
+
+} catch (error) {
+  console.error('Error initializing Google Cloud clients:', error);
+  throw new Error('Failed to initialize Google Cloud services. Check your credentials.');
+}
 
 function getSpeechToTextEncoding(mimeType: string): protos.google.cloud.speech.v1.RecognitionConfig.AudioEncoding {
   // Normalize the MIME type to lowercase
@@ -59,22 +66,33 @@ function getSpeechToTextEncoding(mimeType: string): protos.google.cloud.speech.v
   return encoding;
 }
 
-export async function transcribeAudio(audioBuffer: Buffer, languageCode: string,typelang :string,sampleRate:number,channels:number): Promise<SRTSegment[]> {
+export async function transcribeAudio(audioBuffer: Buffer, languageCode: string, typelang: string, sampleRate: number, channels: number): Promise<SRTSegment[]> {
   const audio = {
     content: audioBuffer.toString('base64'),
   };
 
   const config = {
     encoding: getSpeechToTextEncoding(typelang),
-    sampleRateHertz: sampleRate, // Match this to the sample rate of your WAV file
-    languageCode: languageCode,  // Primary language (Telugu)
-    alternativeLanguageCodes: ['en-US','en-IN'],  // English as secondary language
-    enableWordTimeOffsets: true,  // To get word-level timestamps
-    model: 'default',  // You can experiment with different models
-    audioChannelCount: channels, // Set to 1 for mono audio
-    useEnhanced: true, // Enable enhanced model for better accuracy if available
-    automaticPunctuation: true,  // Adds punctuation marks to transcriptions
-
+    sampleRateHertz: sampleRate,
+    languageCode: languageCode,
+    alternativeLanguageCodes: ['en-US','en-IN'],
+    enableWordTimeOffsets: true,
+    model: 'default',
+    audioChannelCount: channels,
+    useEnhanced: true,
+    automaticPunctuation: true,
+    enableAutomaticPunctuation: true,
+    maxAlternatives: 1,
+    profanityFilter: false,
+    enableWordConfidence: true,
+    enableSpeakerDiarization: false,
+    diarizationSpeakerCount: 1,
+    metadata: {
+      interactionType: protos.google.cloud.speech.v1.RecognitionMetadata.InteractionType.DISCUSSION,
+      microphoneDistance: protos.google.cloud.speech.v1.RecognitionMetadata.MicrophoneDistance.NEARFIELD,
+      originalMediaType: protos.google.cloud.speech.v1.RecognitionMetadata.OriginalMediaType.AUDIO,
+      recordingDeviceType: protos.google.cloud.speech.v1.RecognitionMetadata.RecordingDeviceType.SMARTPHONE,
+    },
   };
 
   const request = {
@@ -82,65 +100,95 @@ export async function transcribeAudio(audioBuffer: Buffer, languageCode: string,
     config,
   };
 
-  const [response] = await speechClient.recognize(request);
-  console.log('API Response:', response);
+  console.log('Audio buffer length:', audioBuffer.length);
+  console.log('Audio duration (seconds):', audioBuffer.length / (sampleRate * channels * 2)); // Assuming 16-bit audio
 
-  const transcription = response.results
-    ?.map(result => result.alternatives?.[0])
-    .filter(alt => alt !== undefined);
+  const [response] = await speechClient.recognize(request);
+  console.log('Full API Response:', JSON.stringify(response, null, 2));
 
   const segments: SRTSegment[] = [];
-  let currentSegment: SRTSegment | null = null;
 
-  // Convert transcription to smaller segments
-  transcription?.forEach(result => {
-    result?.words?.forEach((word, index) => {
-      const startTime =
-        Number(word.startTime?.seconds || 0) + Number(word.startTime?.nanos || 0) / 1e9;
-      const endTime =
-        Number(word.endTime?.seconds || 0) + Number(word.endTime?.nanos || 0) / 1e9;
+  // Process each word with error handling
+  response.results?.forEach((result, resultIndex) => {
+    const words = result.alternatives?.[0]?.words || [];
+    
+    words.forEach((word) => {
+      try {
+        const startTime = Number(word.startTime?.seconds || 0) + Number(word.startTime?.nanos || 0) / 1e9;
+        const endTime = Number(word.endTime?.seconds || 0) + Number(word.endTime?.nanos || 0) / 1e9;
 
-      // Create a segment for each word
-      const segment: SRTSegment = {
-        start: startTime,
-        end: endTime,
-        text: word.word || '',
-      };
+        if (isNaN(startTime) || isNaN(endTime)) {
+          console.warn('Invalid timestamp for word:', word.word);
+          return; // Skip this word
+        }
 
-      segments.push(segment);
+        segments.push({
+          start: startTime,
+          end: endTime,
+          text: word.word || '',
+          confidence: word.confidence || 0
+        });
+      } catch (error) {
+        console.error('Error processing word:', word, error);
+        // Continue with next word
+      }
     });
   });
 
-  // Now, group exactly two consecutive words for each caption
-  const reducedSegments: SRTSegment[] = [];
+  // Sort segments by start time to ensure correct ordering
+  segments.sort((a, b) => a.start - b.start);
 
+  // Group into pairs with error handling
+  const reducedSegments: SRTSegment[] = [];
+  
   for (let i = 0; i < segments.length; i += 2) {
     const firstWord = segments[i];
     const secondWord = segments[i + 1];
 
-    // Combine two words into a single caption
-    if (secondWord) {
-      reducedSegments.push({
-        start: firstWord.start,
-        end: secondWord.end,
-       
-        text: `${firstWord.text} ${secondWord.text}`,
-      });
-    } else {
-      // If it's the last word and no pair exists, add it as its own caption
-      reducedSegments.push({
-        start: firstWord.start,
-        end: firstWord.end,
-     
-        text: firstWord.text,
-      });
+    try {
+      if (secondWord) {
+        // Check if words are too far apart (more than 2 seconds)
+        const timeDiff = secondWord.start - firstWord.end;
+        if (timeDiff > 2) {
+          // Add first word as its own segment
+          reducedSegments.push({
+            start: firstWord.start,
+            end: firstWord.end,
+            text: firstWord.text,
+          });
+          // Process second word in next iteration
+          i -= 1; // Adjust index to process second word as first of next pair
+        } else {
+          // Normal pair processing
+          reducedSegments.push({
+            start: firstWord.start,
+            end: secondWord.end,
+            text: `${firstWord.text} ${secondWord.text}`,
+          });
+        }
+      } else {
+        // Handle last single word
+        reducedSegments.push({
+          start: firstWord.start,
+          end: firstWord.end,
+          text: firstWord.text,
+        });
+      }
+    } catch (error) {
+      console.error('Error grouping words:', { firstWord, secondWord }, error);
+      // If error occurs, try to salvage at least the first word
+      if (firstWord) {
+        reducedSegments.push({
+          start: firstWord.start,
+          end: firstWord.end,
+          text: firstWord.text,
+        });
+      }
     }
   }
 
-  console.log(reducedSegments);
-
+  console.log('Final segments:', reducedSegments);
   return reducedSegments;
-
 }
 
 // export async function translateText(text: string, targetLanguage: string): Promise<string> {

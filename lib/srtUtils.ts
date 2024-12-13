@@ -1,8 +1,8 @@
 export interface SRTSegment {
- 
   start: number;
   end: number;
   text: string;
+  confidence?: number;
 }
 
 export function convertToUTF8(content: string): string {
