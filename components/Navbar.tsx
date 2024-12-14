@@ -1,42 +1,123 @@
 "use client";
 
+import Link from "next/link";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import UserCredits from "@/components/UserCredits";
+import { Menu, X } from "lucide-react";
+import { useState } from "react";
+import { useCreditsStore } from "@/store/useCreditsStore";
 
 export default function Navbar() {
   const { data: session } = useSession();
+  const credits = useCreditsStore((state) => state.credits);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
   return (
-    <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-10">
-      <div className="container flex h-14 items-center justify-between">
-        <Link href="/" className="font-bold text-xl">
-          Caption Generator
-        </Link>
-
-        <div className="flex items-center gap-4">
-          {session ? (
-            <>
-              <UserCredits />
-              <Button
-                variant="ghost"
-                onClick={() => signOut()}
-              >
-                Sign Out
-              </Button>
-            </>
-          ) : (
-            <Button
-              onClick={() => signIn("google")}
+    <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 justify-between items-center">
+          {/* Logo */}
+          <div className="flex-shrink-0">
+            <Link 
+              href="/" 
+              className="text-xl sm:text-2xl font-semibold font-outfit tracking-tight"
             >
-              Sign In with Google
-            </Button>
-          )}
-          <Link href="/pricing">
-            <Button variant="outline">Pricing</Button>
-          </Link>
+              CaptionGen
+            </Link>
+          </div>
+
+          {/* Mobile menu button */}
+          <div className="flex sm:hidden">
+            <div
+              onClick={toggleMenu}
+              className="p-2 cursor-pointer text-gray-500 hover:text-gray-700 focus:outline-none"
+              aria-label="Toggle menu"
+            >
+              {isMenuOpen ? (
+                <X className="h-6 w-6" />
+              ) : (
+                <Menu className="h-6 w-6" />
+              )}
+            </div>
+          </div>
+
+          {/* Desktop navigation */}
+          <div className="hidden sm:flex sm:items-center sm:space-x-4">
+            {session ? (
+              <>
+                <div className="text-sm font-medium text-muted-foreground">
+                  Credits: {credits}
+                </div>
+                <Link href="/pricing">
+                  <Button variant="outline" size="sm" className="font-medium">
+                    Buy Credits
+                  </Button>
+                </Link>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => signOut()}
+                  className="font-medium"
+                >
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => signIn("google")}
+                className="font-medium"
+              >
+                Sign In
+              </Button>
+            )}
+          </div>
         </div>
+
+        {/* Mobile menu */}
+        {isMenuOpen && (
+          <div className="sm:hidden">
+            <div className="space-y-2 pb-3 pt-2">
+              {session ? (
+                <div className="flex flex-col items-center space-y-3">
+                  <div className="px-4 py-2 text-sm font-medium text-muted-foreground">
+                    Credits: {credits}
+                  </div>
+                  <Link 
+                    href="/pricing" 
+                    className="w-full text-center px-4 py-2.5 text-sm font-medium hover:bg-muted rounded-md"
+                    onClick={toggleMenu}
+                  >
+                    Buy Credits
+                  </Link>
+                  <div
+                    onClick={() => {
+                      signOut();
+                      toggleMenu();
+                    }}
+                    className="w-full text-center px-4 py-2.5 text-sm font-medium hover:bg-muted rounded-md cursor-pointer"
+                  >
+                    Sign Out
+                  </div>
+                </div>
+              ) : (
+                <div className="px-4 py-2 text-center">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => signIn("google")}
+                    className="w-full font-medium"
+                  >
+                    Sign In
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   );

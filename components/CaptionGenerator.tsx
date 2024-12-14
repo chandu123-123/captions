@@ -12,7 +12,8 @@ import AudioPlayer from '@/components/AudioPlayer';
 import { languages } from '@/lib/languages';
 import { convertToUTF8 } from '@/lib/srtUtils';
 import { isPhoneticSupported } from '@/lib/phoneticMapping';
-import DemoVideo from '@/components/DemoVideo';
+import { useTypewriter, Cursor } from 'react-simple-typewriter';
+import { motion } from 'framer-motion';
 import { useCreditsStore } from '@/store/useCreditsStore';
 
 interface ClaudeResponse {
@@ -40,6 +41,17 @@ export default function CaptionGenerator() {
     }
   }, [session]);
 
+  const [sourceText] = useTypewriter({
+    words: ['నన్నైతే పొట్టోడు', 'భూమ్మీద పుట్టలేదు', 'పుట్టాడు అది మళ్ళా నేనే'],
+    loop: true,
+    delaySpeed: 2000,
+  });
+
+  const [targetText] = useTypewriter({
+    words: ['Nannaite Pottodu', 'Bhoommeeda Puttaledhu', 'Puttadu Adi Malla Nene'],
+    loop: true,
+    delaySpeed: 2000,
+  });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!session) return;
@@ -209,12 +221,39 @@ export default function CaptionGenerator() {
     return results.join(' ');
   };
 
+  const DemoTypingEffect = () => (
+    <motion.div 
+      className="my-4 sm:my-8 p-4 sm:p-6 rounded-xl bg-gradient-to-r from-primary/10 to-secondary/10"
+    >
+      <h3 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-center">See how it works</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <div className="p-3 sm:p-4 rounded-lg bg-card shadow-sm">
+          <h4 className="text-xs sm:text-sm font-medium text-muted-foreground mb-2">Original Text</h4>
+          <div className="h-16 sm:h-24 flex items-center justify-center text-base sm:text-lg">
+            <span>{sourceText}</span>
+            <Cursor cursorStyle='|' />
+          </div>
+        </div>
+        <div className="p-3 sm:p-4 rounded-lg bg-card shadow-sm">
+          <h4 className="text-xs sm:text-sm font-medium text-muted-foreground mb-2">Phonetic Translation</h4>
+          <div className="h-16 sm:h-24 flex items-center justify-center text-base sm:text-lg">
+            <span>{targetText}</span>
+            <Cursor cursorStyle='|' />
+          </div>
+        </div>
+      </div>
+      <p className="text-xs sm:text-sm text-muted-foreground text-center mt-3 sm:mt-4">
+        Upload your audio file and get accurate captions with phonetic translations
+      </p>
+    </motion.div>
+  );
+
   return (
-    <div className="space-y-8  m-auto flex-col justify-center items-center w-full max-w-4xl">
-      <Card className="p-8">
-        <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-8 mx-auto px-4 sm:px-6 w-full max-w-4xl">
+      <Card className="p-4 sm:p-8" id="upload-section">
+        <div className="space-y-4 sm:space-y-6">
           <div 
-            className={`relative group rounded-xl border-2 border-dashed p-8 transition-all ${
+            className={`relative group rounded-xl border-2 border-dashed p-4 sm:p-8 transition-all ${
               session 
                 ? "hover:border-primary/50 hover:bg-muted/50 border-border cursor-pointer" 
                 : "border-muted bg-muted/10"
@@ -229,15 +268,15 @@ export default function CaptionGenerator() {
                 </div>
               </div>
             )}
-            <div className="text-center space-y-4">
-              <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                <FileAudio className="h-8 w-8 text-primary" />
+            <div className="text-center space-y-3 sm:space-y-4">
+              <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                <FileAudio className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
               </div>
               <div>
-                <p className="font-semibold text-lg">
+                <p className="font-semibold text-base sm:text-lg">
                   {session ? "Click to upload" : "Audio Upload"}
                 </p>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                   MP3, WAV, or M4A (max. 500MB)
                 </p>
               </div>
@@ -253,14 +292,14 @@ export default function CaptionGenerator() {
           </div>
 
           {audioUrl && (
-            <div className="rounded-lg border bg-card p-4">
+            <div className="rounded-lg border bg-card p-3 sm:p-4">
               <AudioPlayer audioUrl={audioUrl} />
             </div>
           )}
 
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="space-y-2.5">
-              <label className="text-sm font-medium">Source Language</label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            <div className="space-y-2">
+              <label className="text-xs sm:text-sm font-medium">Source Language</label>
               <Select value={sourceLanguage} onValueChange={setSourceLanguage} disabled={!session}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select language" />
@@ -275,8 +314,8 @@ export default function CaptionGenerator() {
               </Select>
             </div>
 
-            <div className="space-y-2.5">
-              <label className="text-sm font-medium">Target Language</label>
+            <div className="space-y-2">
+              <label className="text-xs sm:text-sm font-medium">Target Language</label>
               <Select value={targetLanguage} onValueChange={setTargetLanguage} disabled={!session}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select language" />
@@ -291,8 +330,8 @@ export default function CaptionGenerator() {
               </Select>
             </div>
 
-            <div className="space-y-2.5">
-              <label className="text-sm font-medium">Output Format</label>
+            <div className="space-y-2">
+              <label className="text-xs sm:text-sm font-medium">Output Format</label>
               <Select value={outputFormat} onValueChange={setOutputFormat} disabled={!session}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select format" />
@@ -317,7 +356,7 @@ export default function CaptionGenerator() {
           </div>
 
           <Button
-            className="w-full"
+            className="w-full text-sm sm:text-base"
             size="lg"
             onClick={handleSubmit}
             disabled={!session || !audioFile || !sourceLanguage || !targetLanguage || isProcessing}
@@ -326,7 +365,7 @@ export default function CaptionGenerator() {
               "Processing..."
             ) : (
               <>
-                <FileOutput className="mr-2 h-4 w-4" />
+                <FileOutput className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                 Generate Captions
               </>
             )}
@@ -334,11 +373,11 @@ export default function CaptionGenerator() {
         </div>
       </Card>
 
-      <div id="demo">
-        <DemoVideo />
+      <div id="demo" className="pt-4 sm:pt-8">
+        <DemoTypingEffect />
       </div>
 
-      <div className="text-center text-sm text-muted-foreground">
+      <div className="text-center text-xs sm:text-sm text-muted-foreground pb-4 sm:pb-8">
         <p>Supported formats: MP3, WAV, M4A • Max file size: 500MB</p>
       </div>
     </div>

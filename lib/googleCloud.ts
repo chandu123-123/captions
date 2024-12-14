@@ -80,19 +80,8 @@ export async function transcribeAudio(audioBuffer: Buffer, languageCode: string,
     model: 'default',
     audioChannelCount: channels,
     useEnhanced: true,
-    automaticPunctuation: true,
     enableAutomaticPunctuation: true,
-    maxAlternatives: 1,
-    profanityFilter: false,
     enableWordConfidence: true,
-    enableSpeakerDiarization: false,
-    diarizationSpeakerCount: 1,
-    metadata: {
-      interactionType: protos.google.cloud.speech.v1.RecognitionMetadata.InteractionType.DISCUSSION,
-      microphoneDistance: protos.google.cloud.speech.v1.RecognitionMetadata.MicrophoneDistance.NEARFIELD,
-      originalMediaType: protos.google.cloud.speech.v1.RecognitionMetadata.OriginalMediaType.AUDIO,
-      recordingDeviceType: protos.google.cloud.speech.v1.RecognitionMetadata.RecordingDeviceType.SMARTPHONE,
-    },
   };
 
   const request = {
@@ -100,95 +89,97 @@ export async function transcribeAudio(audioBuffer: Buffer, languageCode: string,
     config,
   };
 
-  console.log('Audio buffer length:', audioBuffer.length);
-  console.log('Audio duration (seconds):', audioBuffer.length / (sampleRate * channels * 2)); // Assuming 16-bit audio
-
   const [response] = await speechClient.recognize(request);
-  console.log('Full API Response:', JSON.stringify(response, null, 2));
-
   const segments: SRTSegment[] = [];
+  const MIN_SEGMENT_DURATION = 0.3; // Reduced minimum duration
+  const MAX_SEGMENT_DURATION = 2.5; // Increased maximum duration
+  const MIN_CONFIDENCE = 0.5; // Minimum confidence threshold
 
-  // Process each word with error handling
-  response.results?.forEach((result, resultIndex) => {
+  // Filter out unwanted words/phrases
+  const unwantedPhrases = ['ecet.in', 'code', 'http', 'www'];
+
+  response.results?.forEach((result) => {
     const words = result.alternatives?.[0]?.words || [];
-    
-    words.forEach((word) => {
-      try {
-        const startTime = Number(word.startTime?.seconds || 0) + Number(word.startTime?.nanos || 0) / 1e9;
-        const endTime = Number(word.endTime?.seconds || 0) + Number(word.endTime?.nanos || 0) / 1e9;
+    let currentSegment: SRTSegment | null = null;
 
-        if (isNaN(startTime) || isNaN(endTime)) {
-          console.warn('Invalid timestamp for word:', word.word);
-          return; // Skip this word
-        }
+    words.forEach((word, index) => {
+      const startTime = Number(word.startTime?.seconds || 0) + Number(word.startTime?.nanos || 0) / 1e9;
+      const endTime = Number(word.endTime?.seconds || 0) + Number(word.endTime?.nanos || 0) / 1e9;
+      const confidence = word.confidence || 0;
+      const wordText = word.word || '';
 
-        segments.push({
+      // Skip unwanted phrases and low confidence words
+      if (confidence < MIN_CONFIDENCE || 
+          unwantedPhrases.some(phrase => wordText.toLowerCase().includes(phrase.toLowerCase()))) {
+        return;
+      }
+
+      if (!currentSegment) {
+        currentSegment = {
           start: startTime,
           end: endTime,
-          text: word.word || '',
-          confidence: word.confidence || 0
-        });
-      } catch (error) {
-        console.error('Error processing word:', word, error);
-        // Continue with next word
+          text: wordText
+        };
+      } else {
+        const segmentDuration = endTime - currentSegment.start;
+        const timeSinceLastWord = startTime - currentSegment.end;
+
+        if (segmentDuration >= MAX_SEGMENT_DURATION || 
+            timeSinceLastWord > 0.3 || 
+            wordText.match(/[.!?]$/)) {
+          
+          if (currentSegment.end - currentSegment.start >= MIN_SEGMENT_DURATION) {
+            segments.push(currentSegment);
+          }
+          currentSegment = {
+            start: startTime,
+            end: endTime,
+            text: wordText
+          };
+        } else {
+          currentSegment.end = endTime;
+          currentSegment.text += ' ' + wordText;
+        }
+      }
+
+      if (index === words.length - 1 && currentSegment) {
+        segments.push(currentSegment);
       }
     });
   });
 
-  // Sort segments by start time to ensure correct ordering
+  // Calculate total audio duration
+  const audioDuration = audioBuffer.length / (sampleRate * channels * 2);
+
+  // Sort segments and ensure full coverage
   segments.sort((a, b) => a.start - b.start);
 
-  // Group into pairs with error handling
-  const reducedSegments: SRTSegment[] = [];
-  
-  for (let i = 0; i < segments.length; i += 2) {
-    const firstWord = segments[i];
-    const secondWord = segments[i + 1];
+  // Fill gaps and extend segments
+  for (let i = 0; i < segments.length; i++) {
+    // Fill gap from previous segment
+    if (i > 0) {
+      const gap = segments[i].start - segments[i-1].end;
+      if (gap > 0.1) {
+        segments[i-1].end = segments[i].start;
+      }
+    }
 
-    try {
-      if (secondWord) {
-        // Check if words are too far apart (more than 2 seconds)
-        const timeDiff = secondWord.start - firstWord.end;
-        if (timeDiff > 2) {
-          // Add first word as its own segment
-          reducedSegments.push({
-            start: firstWord.start,
-            end: firstWord.end,
-            text: firstWord.text,
-          });
-          // Process second word in next iteration
-          i -= 1; // Adjust index to process second word as first of next pair
-        } else {
-          // Normal pair processing
-          reducedSegments.push({
-            start: firstWord.start,
-            end: secondWord.end,
-            text: `${firstWord.text} ${secondWord.text}`,
-          });
-        }
-      } else {
-        // Handle last single word
-        reducedSegments.push({
-          start: firstWord.start,
-          end: firstWord.end,
-          text: firstWord.text,
-        });
-      }
-    } catch (error) {
-      console.error('Error grouping words:', { firstWord, secondWord }, error);
-      // If error occurs, try to salvage at least the first word
-      if (firstWord) {
-        reducedSegments.push({
-          start: firstWord.start,
-          end: firstWord.end,
-          text: firstWord.text,
-        });
-      }
+    // Extend last segment to audio end
+    if (i === segments.length - 1 && audioDuration - segments[i].end > 0.1) {
+      segments[i].end = audioDuration;
     }
   }
 
-  console.log('Final segments:', reducedSegments);
-  return reducedSegments;
+  // Add silence segment if there's a gap at the end
+  if (segments.length > 0 && audioDuration - segments[segments.length-1].end > 1.0) {
+    segments.push({
+      start: segments[segments.length-1].end,
+      end: audioDuration,
+      text: ''
+    });
+  }
+
+  return segments.filter(segment => segment.text.trim().length > 0);
 }
 
 // export async function translateText(text: string, targetLanguage: string): Promise<string> {

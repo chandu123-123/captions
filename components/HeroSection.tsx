@@ -3,6 +3,9 @@
 import { Button } from "@/components/ui/button";
 import { signIn } from "next-auth/react";
 import { ArrowRight, Languages, Clock, Sparkles } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { useRouter } from 'next/navigation';
+
 
 const features = [
   {
@@ -23,6 +26,18 @@ const features = [
 ];
 
 export default function HeroSection() {
+  const { data: session } = useSession();
+  const router = useRouter();
+
+  const handleClick = () => {
+    if (session?.user) {
+      // Scroll to upload section
+      document.getElementById('upload-section')?.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      signIn("google");
+    }
+  };
+
   return (
     <div className="relative overflow-hidden bg-gradient-to-b from-primary/5 to-background py-20 p-10">
       <div className="container relative">
@@ -40,8 +55,8 @@ export default function HeroSection() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button size="lg" onClick={() => signIn("google")}>
-                Get Started Free
+              <Button size="lg" onClick={handleClick}>
+                {session?.user ? "Get Started" : "Get Started Free"}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
               <Button size="lg" variant="outline" asChild>
