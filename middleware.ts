@@ -23,6 +23,8 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname === '/privacy' ||
     request.nextUrl.pathname === '/terms' ||
     request.nextUrl.pathname === '/refund' ||
+    request.nextUrl.pathname === '/pricing' ||
+    request.nextUrl.pathname === '/shipping' ||
     request.nextUrl.pathname.startsWith('/api/auth')
   ) {
     return NextResponse.next();
@@ -42,7 +44,6 @@ export const config = {
     '/api/claudeai/:path*',
     '/api/paymentverify/:path*',
     '/api/razorpay/:path*',
-    '/pricing',
     '/dashboard/:path*'
   ],
 };
