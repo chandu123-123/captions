@@ -5,6 +5,8 @@ import { Anthropic } from '@anthropic-ai/sdk';
 import { isEmail } from 'validator';
 import { dbConnection } from '@/app/lib/database';
 import { UserLogin } from '@/app/lib/model';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/app/lib/authOptions';
 
 // Increase timeout
 export const config = {
@@ -62,7 +64,19 @@ type MsgContent = ContentBlock | ToolUseBlock;
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     await dbConnection();
+    const user = await UserLogin.findOne({ email: session.user.email });
+    if (!user || user.credits < 1) {
+      return NextResponse.json(
+        { error: 'Insufficient credits' },
+        { status: 403 }
+      );
+    }
 
     const data: RequestData = await req.json();
     const { filecont, target, email, source } = data;

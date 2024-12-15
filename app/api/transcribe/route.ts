@@ -5,6 +5,12 @@ import { Readable } from 'stream';
 import * as fs from 'fs';
 import * as mm from 'music-metadata';
 import { convertToPhonetic } from '@/lib/phoneticMapping';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from "@/app/lib/authOptions";
+import { UserLogin } from '@/app/lib/model';
+import { dbConnection } from '@/app/lib/database';
+import { isEmail } from 'validator';
+
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -95,6 +101,23 @@ function getSpeechToTextEncoding(mimeType: string): string {
 
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check credits
+    await dbConnection();
+    const user = await UserLogin.findOne({ email: session.user.email });
+    if (!user || user.credits < 1) {
+      return NextResponse.json(
+        { error: 'Insufficient credits' },
+        { status: 403 }
+      );
+    }
+    if (!isEmail(session?.user?.email)) {
+      return NextResponse.json({ msg: "Invalid email format" }, { status: 400 });
+    }
     const formData = await request.formData();
     const audioFile = formData.get('audio') as File;
     const sourceLanguage = formData.get('sourceLanguage') as string;

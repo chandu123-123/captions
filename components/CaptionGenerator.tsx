@@ -42,21 +42,51 @@ export default function CaptionGenerator() {
   }, [session]);
 
   const [sourceText] = useTypewriter({
-    words: ['నన్నైతే పొట్టోడు', 'భూమ్మీద పుట్టలేదు', 'పుట్టాడు అది మళ్ళా నేనే'],
+    words: [
+      'नमस्ते दुनिया', // Hindi
+      'வணக்கம் உலகம்', // Tamil
+      'ನಮಸ್ಕಾರ ಜಗತ್ತು', // Kannada
+      'Hello World', // English
+      'నమస్కారం ప్రపంచం', // Telugu
+    ],
     loop: true,
-    delaySpeed: 2000,
+    delaySpeed: 3000,
+    typeSpeed: 50,
   });
 
   const [targetText] = useTypewriter({
-    words: ['Nannaite Pottodu', 'Bhoommeeda Puttaledhu', 'Puttadu Adi Malla Nene'],
+    words: [
+      'Namaste Duniya (Hindi → English)',
+      'Vanakkam Ulagam (Tamil → English)',
+      'Namaskara Jagattu (Kannada → English)',
+      'Bonjour le Monde (English → French)',
+      'Namaskaram Prapancham (Telugu → English)',
+    ],
     loop: true,
-    delaySpeed: 2000,
+    delaySpeed: 3000,
+    typeSpeed: 50,
   });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!session) return;
     const file = e.target.files?.[0];
+    
     if (file) {
+      // Check file size (20MB = 20 * 1024 * 1024 bytes)
+      const maxSize = 10* 1024 * 1024; // 20MB in bytes
+      if (file.size > maxSize) {
+        toast({
+          title: "File too large",
+          description: "Please upload an audio file smaller than 10MB",
+          variant: "destructive",
+        });
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        return;
+      }
+
       setAudioFile(file);
       setAudioUrl(URL.createObjectURL(file));
     }
@@ -223,34 +253,56 @@ export default function CaptionGenerator() {
 
   const DemoTypingEffect = () => (
     <motion.div 
+     
       className="my-4 sm:my-8 p-4 sm:p-6 rounded-xl bg-gradient-to-r from-primary/10 to-secondary/10"
     >
-      <h3 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-center">See how it works</h3>
+      <h3 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 text-center">
+        Multi-Language Support
+      </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div className="p-3 sm:p-4 rounded-lg bg-card shadow-sm">
-          <h4 className="text-xs sm:text-sm font-medium text-muted-foreground mb-2">Original Text</h4>
-          <div className="h-16 sm:h-24 flex items-center justify-center text-base sm:text-lg">
-            <span>{sourceText}</span>
-            <Cursor cursorStyle='|' />
+          <h4 className="text-xs sm:text-sm font-medium text-muted-foreground mb-2">
+            Original Text
+          </h4>
+          <div className="h-16 sm:h-24 flex items-center justify-center text-base sm:text-lg font-medium">
+            <motion.span
+              initial={{ opacity: 0.5 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              {sourceText}
+            </motion.span>
+            <Cursor cursorStyle='|' cursorBlinking={false} />
           </div>
         </div>
         <div className="p-3 sm:p-4 rounded-lg bg-card shadow-sm">
-          <h4 className="text-xs sm:text-sm font-medium text-muted-foreground mb-2">Phonetic Translation</h4>
+          <h4 className="text-xs sm:text-sm font-medium text-muted-foreground mb-2">
+            Phonetic Translation
+          </h4>
           <div className="h-16 sm:h-24 flex items-center justify-center text-base sm:text-lg">
-            <span>{targetText}</span>
-            <Cursor cursorStyle='|' />
+            <motion.span
+              initial={{ opacity: 0.5 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              {targetText}
+            </motion.span>
+            <Cursor cursorStyle='|' cursorBlinking={false} />
           </div>
         </div>
       </div>
       <p className="text-xs sm:text-sm text-muted-foreground text-center mt-3 sm:mt-4">
-        Upload your audio file and get accurate captions with phonetic translations
+        Support for multiple languages with accurate phonetic translations
       </p>
     </motion.div>
   );
 
   return (
     <div className="space-y-4 sm:space-y-8 mx-auto px-4 sm:px-6 w-full max-w-4xl">
-      <Card className="p-4 sm:p-8" id="upload-section">
+       <div id="demo" className="pt-4 sm:pt-8">
+        <DemoTypingEffect />
+      </div>
+      <Card className="p-4 sm:p-8 pt-10" id="upload-section">
         <div className="space-y-4 sm:space-y-6">
           <div 
             className={`relative group rounded-xl border-2 border-dashed p-4 sm:p-8 transition-all ${
@@ -277,7 +329,7 @@ export default function CaptionGenerator() {
                   {session ? "Click to upload" : "Audio Upload"}
                 </p>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                  MP3, WAV, or M4A (max. 500MB)
+                  MP3, WAV, or M4A (max. 10MB)
                 </p>
               </div>
             </div>
@@ -373,12 +425,10 @@ export default function CaptionGenerator() {
         </div>
       </Card>
 
-      <div id="demo" className="pt-4 sm:pt-8">
-        <DemoTypingEffect />
-      </div>
+     
 
       <div className="text-center text-xs sm:text-sm text-muted-foreground pb-4 sm:pb-8">
-        <p>Supported formats: MP3, WAV, M4A • Max file size: 500MB</p>
+        <p>Supported formats: MP3, WAV• Max file size: 10MB</p>
       </div>
     </div>
   );

@@ -6,13 +6,25 @@ import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { useCreditsStore } from "@/store/useCreditsStore";
+import { LoadingButton } from "@/components/ui/loading-button";
 
 export default function Navbar() {
   const { data: session } = useSession();
   const credits = useCreditsStore((state) => state.credits);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+
+  const handleSignIn = async () => {
+    setIsSigningIn(true);
+    try {
+      await signIn("google");
+    } catch (error) {
+      console.error("Sign in error:", error);
+    }
+    setIsSigningIn(false);
+  };
 
   return (
     <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -26,6 +38,42 @@ export default function Navbar() {
             >
               CaptionGen
             </Link>
+          </div>
+
+          {/* Desktop navigation */}
+          <div className="hidden sm:flex sm:items-center sm:space-x-4">
+            {session ? (
+              <>
+                <div className="text-sm font-medium text-muted-foreground">
+                  Credits: {credits}
+                </div>
+                <div>
+                  <Link href="/pricing" className="inline-block">
+                    <Button variant="outline" size="sm" className="font-medium">
+                      Buy Credits
+                    </Button>
+                  </Link>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => signOut()}
+                  className="font-medium"
+                >
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <LoadingButton
+                variant="default"
+                size="sm"
+                onClick={handleSignIn}
+                loading={isSigningIn}
+                className="font-medium"
+              >
+                Sign In
+              </LoadingButton>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -42,39 +90,6 @@ export default function Navbar() {
               )}
             </div>
           </div>
-
-          {/* Desktop navigation */}
-          <div className="hidden sm:flex sm:items-center sm:space-x-4">
-            {session ? (
-              <>
-                <div className="text-sm font-medium text-muted-foreground">
-                  Credits: {credits}
-                </div>
-                <Link href="/pricing">
-                  <Button variant="outline" size="sm" className="font-medium">
-                    Buy Credits
-                  </Button>
-                </Link>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => signOut()}
-                  className="font-medium"
-                >
-                  Sign Out
-                </Button>
-              </>
-            ) : (
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => signIn("google")}
-                className="font-medium"
-              >
-                Sign In
-              </Button>
-            )}
-          </div>
         </div>
 
         {/* Mobile menu */}
@@ -86,13 +101,15 @@ export default function Navbar() {
                   <div className="px-4 py-2 text-sm font-medium text-muted-foreground">
                     Credits: {credits}
                   </div>
-                  <Link 
-                    href="/pricing" 
-                    className="w-full text-center px-4 py-2.5 text-sm font-medium hover:bg-muted rounded-md"
-                    onClick={toggleMenu}
-                  >
-                    Buy Credits
-                  </Link>
+                  <div className="w-full text-center">
+                    <Link 
+                      href="/pricing" 
+                      className="block px-4 py-2.5 text-sm font-medium hover:bg-muted rounded-md"
+                      onClick={toggleMenu}
+                    >
+                      Buy Credits
+                    </Link>
+                  </div>
                   <div
                     onClick={() => {
                       signOut();
@@ -105,14 +122,15 @@ export default function Navbar() {
                 </div>
               ) : (
                 <div className="px-4 py-2 text-center">
-                  <Button
+                  <LoadingButton
                     variant="default"
                     size="sm"
-                    onClick={() => signIn("google")}
+                    onClick={handleSignIn}
+                    loading={isSigningIn}
                     className="w-full font-medium"
                   >
                     Sign In
-                  </Button>
+                  </LoadingButton>
                 </div>
               )}
             </div>
