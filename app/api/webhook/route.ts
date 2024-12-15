@@ -27,6 +27,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     const body = JSON.parse(rawBody);
     const notes = body.payload.order.entity.notes as { [key: string]: string };
     const userEmail = notes.userEmail;
+    const credits = notes.credits;
     const email = notes.userEmail;
 
     // Event Handling
@@ -41,7 +42,7 @@ export async function POST(req: Request): Promise<NextResponse> {
         const user = await UserLogin.findOne({ email });
 
         if (user) {
-          await UserLogin.updateOne({ email }, { paid: true });
+          await UserLogin.updateOne({ email }, { credits: user.credits + credits });
         } else {
           console.error(`User not found for email: ${email}`);
         }

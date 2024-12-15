@@ -10,10 +10,18 @@ const instance = new Razorpay({
   key_secret: process.env.RAZORPAY_API_SECRET as string,
 });
 
-// Define interface for request body
+// Define interface for plan details
+interface PlanDetails {
+  amount: string;
+  credits: number;
+  name: string;
+  price: string;
+}
+
+// Update request body interface
 interface RequestBody {
   useremail: string;
-  details: object;
+  details: PlanDetails;
 }
 
 // Define the POST handler
@@ -26,20 +34,21 @@ export async function POST(req: Request): Promise<NextResponse> {
     console.log(body);
     
     const payment_capture = 1;
-    const amount = 1 * 5000; // Amount in paisa. In this case, INR 1
+    const amount = parseInt(details.amount) * 100; // Convert to paisa
     const currency = "INR";
     
     // Define order options type explicitly
     const options = {
-      amount: amount.toString(),
+      amount,
       currency,
       receipt: shortid.generate(),
       payment_capture,
       notes: {
-        paymentFor: "Fresheresume",
+        paymentFor: "IndieCaptions",
         userId: "100",
         productId: "P100",
         userEmail: useremail,
+        credits: details.credits,
       },
     };
     
