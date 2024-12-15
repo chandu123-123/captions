@@ -7,54 +7,35 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 
 export default function ContactPage() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { toast } = useToast();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    
-    // Add your form submission logic here
-    
-    toast({
-      title: "Message Sent",
-      description: "We'll get back to you as soon as possible.",
-    });
-    
-    setIsSubmitting(false);
-  };
-
   return (
     <div className="container py-12">
       <div className="max-w-2xl mx-auto">
         <h1 className="text-4xl font-bold mb-8">Contact Us</h1>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">First Name</label>
-              <Input required />
+        <div className="space-y-8">
+          <div className="bg-card rounded-lg p-6 shadow-sm">
+            <h2 className="text-xl font-semibold mb-4">Get in Touch</h2>
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-medium mb-2">Email</h3>
+                <p className="text-muted-foreground">indiecaptions@gmail.com</p>
+              </div>
+              
+              <div>
+                <h3 className="font-medium mb-2">Operating Address</h3>
+                <p className="text-muted-foreground">
+                  LB Nagar<br />
+                  Hyderabad, Telangana<br />
+                  India
+                </p>
+              </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Last Name</label>
-              <Input required />
-            </div>
           </div>
-          
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Email</label>
-            <Input type="email" required />
+
+          <div className="text-sm text-muted-foreground">
+            <p>We aim to respond to all inquiries within 24 hours during business days.</p>
           </div>
-          
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Message</label>
-            <Textarea required rows={6} />
-          </div>
-          
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Sending..." : "Send Message"}
-          </Button>
-        </form>
+        </div>
       </div>
     </div>
   );
