@@ -102,6 +102,7 @@ function getSpeechToTextEncoding(mimeType: string): string {
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
+    console.log(session,"session");
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
