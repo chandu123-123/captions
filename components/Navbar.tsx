@@ -36,7 +36,7 @@ export default function Navbar() {
               href="/" 
               className="text-xl sm:text-2xl font-semibold font-outfit tracking-tight"
             >
-              CaptionGen
+              IndieCaptions
             </Link>
           </div>
 

@@ -15,6 +15,7 @@ import { isPhoneticSupported } from '@/lib/phoneticMapping';
 import { useTypewriter, Cursor } from 'react-simple-typewriter';
 import { motion } from 'framer-motion';
 import { useCreditsStore } from '@/store/useCreditsStore';
+import CaptionGuidelines from "./CaptionGuidelines";
 
 interface ClaudeResponse {
   msg: string;
@@ -43,11 +44,11 @@ export default function CaptionGenerator() {
 
   const [sourceText] = useTypewriter({
     words: [
-      'नमस्ते दुनिया', // Hindi
-      'வணக்கம் உலகம்', // Tamil
-      'ನಮಸ್ಕಾರ ಜಗತ್ತು', // Kannada
-      'Hello World', // English
-      'నమస్కారం ప్రపంచం', // Telugu
+      'यह दुनिया बहुत खूबसूरत है', // Hindi: This world is very beautiful
+      'नमस्ते दुनिया',              // Hindi: Hello World
+      'வணக்கம் உலகம்',            // Tamil: Hello World
+      'ನಮಸ್ಕಾರ ಜಗತ್ತು',            // Kannada: Hello World               // English
+      'నమస్కారం ప్రపంచం',          // Telugu: Hello World
     ],
     loop: true,
     delaySpeed: 3000,
@@ -56,10 +57,10 @@ export default function CaptionGenerator() {
 
   const [targetText] = useTypewriter({
     words: [
+      'This world is very beautiful (Hindi → English)',
       'Namaste Duniya (Hindi → English)',
       'Vanakkam Ulagam (Tamil → English)',
       'Namaskara Jagattu (Kannada → English)',
-      'Bonjour le Monde (English → French)',
       'Namaskaram Prapancham (Telugu → English)',
     ],
     loop: true,
@@ -300,7 +301,7 @@ export default function CaptionGenerator() {
         </div>
         <div className="p-3 sm:p-4 rounded-lg bg-card shadow-sm">
           <h4 className="text-xs sm:text-sm font-medium text-muted-foreground mb-2">
-            Phonetic Translation
+           Translation & Phonetic Translation
           </h4>
           <div className="h-16 sm:h-24 flex items-center justify-center text-base sm:text-lg">
             <motion.span
@@ -448,7 +449,7 @@ export default function CaptionGenerator() {
         </div>
       </Card>
 
-     
+      <CaptionGuidelines />
 
       <div className="text-center text-xs sm:text-sm text-muted-foreground pb-4 sm:pb-8">
         <p>Supported formats: MP3, WAV• Max file size: 10MB, max 2 min</p>
