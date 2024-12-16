@@ -71,7 +71,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     await dbConnection();
     const user = await UserLogin.findOne({ email: session.user.email });
-    if (!user || user.credits < 1) {
+    if (!user || user.credits < 5) {
       return NextResponse.json(
         { error: 'Insufficient credits' },
         { status: 403 }

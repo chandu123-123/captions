@@ -78,7 +78,7 @@ console.log(details,"dfsdfsdfsdf");
       }
     console.log(order,"order");
       const options: RazorpayOptions = {
-        key: `${process.env.RAZORPAY_API_KEY}`,
+        key: "rzp_live_EK5ZQ28uT39Z04",
         name: "IndieCaptions",
         currency: order.currency,
         amount: order.amount,
