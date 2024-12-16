@@ -16,25 +16,6 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Allow public routes
-  if (
-    request.nextUrl.pathname === '/' ||
-    request.nextUrl.pathname === '/about' ||
-    request.nextUrl.pathname === '/privacy' ||
-    request.nextUrl.pathname === '/terms' ||
-    request.nextUrl.pathname === '/refund' ||
-    request.nextUrl.pathname === '/pricing' ||
-    request.nextUrl.pathname === '/shipping' ||
-    request.nextUrl.pathname.startsWith('/api/auth')
-  ) {
-    return NextResponse.next();
-  }
-
-  // Check authentication for other routes
-  if (!token) {
-    return NextResponse.redirect(new URL('/', request.url));
-  }
-
   return NextResponse.next();
 }
 
@@ -42,8 +23,5 @@ export const config = {
   matcher: [
     '/api/transcribe/:path*',
     '/api/claudeai/:path*',
-    '/api/paymentverify/:path*',
-    '/api/razorpay/:path*',
-    '/dashboard/:path*'
   ],
 };
