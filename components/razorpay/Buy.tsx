@@ -16,7 +16,8 @@ const Buy: React.FC<BuyProps> = ({ makePayment, useremail }) => {
   const router = useRouter();
 
   const verifying = async () => {
-    await makePayment({ productId: "FresherResume" });
+    console.log("buy component");
+  await makePayment({ productId: "IndieCaptions" });
   };
 
   return (

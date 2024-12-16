@@ -18,10 +18,15 @@ interface PlanDetails {
   price: string;
 }
 
-// Update request body interface
+// Update request body interface to match what's being sent
 interface RequestBody {
   useremail: string;
-  details: PlanDetails;
+  detail: {
+    amount: string;
+    credits: number;
+    name: string;
+    price: string;
+  };
 }
 
 // Define the POST handler
@@ -29,17 +34,17 @@ export async function POST(req: Request): Promise<NextResponse> {
   try {
     // Parse the request body
     const body = await req.json();
-    const { useremail, details }: RequestBody = body;
+    const { useremail, detail }: RequestBody = body;
     
     console.log(body);
-    
+    console.log("detail",detail);
     const payment_capture = 1;
-    const amount = parseInt(details.amount) * 100; // Convert to paisa
+    const amount = parseInt(detail.amount) * 100; // Convert to paisa
     const currency = "INR";
     
     // Define order options type explicitly
     const options = {
-      amount,
+      amount:(amount).toString(),
       currency,
       receipt: shortid.generate(),
       payment_capture,
@@ -48,13 +53,14 @@ export async function POST(req: Request): Promise<NextResponse> {
         userId: "100",
         productId: "P100",
         userEmail: useremail,
-        credits: details.credits,
+        credits: detail.credits,
       },
     };
     
     // Create Razorpay order
+    console.log(options,"options");
     const order = await instance.orders.create(options);
-    
+    console.log(order,"order");
     // Return a successful response with the order details
     return NextResponse.json({ msg: "success", order });
   } catch (error) {

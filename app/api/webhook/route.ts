@@ -29,7 +29,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     const userEmail = notes.userEmail;
     const credits = notes.credits;
     const email = notes.userEmail;
-
+   console.log(notes,"notes");
     // Event Handling
     if (body.event === 'order.paid') {
       const orderId = body.payload.order.entity.id;

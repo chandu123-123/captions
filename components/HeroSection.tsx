@@ -12,7 +12,9 @@ import {
   Globe2, 
   Upload,
   Headphones,
-  Type
+  Type,
+  Film,
+  Instagram
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from 'next/navigation';
@@ -75,18 +77,24 @@ export default function HeroSection() {
               <motion.h1 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-4xl sm:text-5xl font-bold tracking-tight lg:text-6xl"
+                className="text-3xl sm:text-4xl font-bold tracking-tight lg:text-5xl"
               >
-                Transform Audio into{" "}
-                <span className="text-primary">Readable Captions</span>
+                Turn <span className="text-primary">Hours</span> into{" "}
+                <span className="text-primary">Seconds</span>
+                <br />
+                <span className="text-2xl sm:text-3xl lg:text-4xl mt-2 block flex items-center gap-3">
+                  Create Perfect Captions for Your Reels
+                  <Film className="h-8 w-8 text-primary animate-pulse" />
+                  <Instagram className="h-8 w-8 text-primary" />
+                </span>
               </motion.h1>
               <motion.p 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="text-xl text-muted-foreground"
+                className="text-lg sm:text-xl text-muted-foreground"
               >
-                Upload your audio, get instant captions in any language. Perfect for content creators, educators, and professionals.
+                Instantly generate accurate captions in multiple languages. Perfect for Instagram, YouTube Shorts, and TikTok creators.
               </motion.p>
             </div>
 

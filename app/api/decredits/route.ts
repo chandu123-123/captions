@@ -26,7 +26,7 @@ export async function GET(req: Request): Promise<NextResponse> {
     }
     
     const credit = user.credits;
-    user.credits = user.credits-1;
+    user.credits = user.credits-5;
     await user.save();
  
     // Return the credits in the response

@@ -72,23 +72,46 @@ export default function CaptionGenerator() {
     const file = e.target.files?.[0];
     
     if (file) {
-      // Check file size (20MB = 20 * 1024 * 1024 bytes)
-      const maxSize = 10* 1024 * 1024; // 20MB in bytes
+      // Check file size (10MB limit)
+      const maxSize = 10 * 1024 * 1024;
       if (file.size > maxSize) {
         toast({
           title: "File too large",
           description: "Please upload an audio file smaller than 10MB",
           variant: "destructive",
         });
-        // Reset file input
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
         return;
       }
 
-      setAudioFile(file);
-      setAudioUrl(URL.createObjectURL(file));
+      // Check audio duration
+      const audio = new Audio();
+      const reader = new FileReader();
+      
+      reader.onload = function(e) {
+        audio.src = e.target?.result as string;
+        
+        audio.onloadedmetadata = function() {
+          if (audio.duration > 120) { // 120 seconds = 2 minutes
+            toast({
+              title: "Audio too long",
+              description: "Please upload an audio file shorter than 2 minutes",
+              variant: "destructive",
+            });
+            if (fileInputRef.current) {
+              fileInputRef.current.value = '';
+            }
+            return;
+          }
+          
+          setAudioFile(file);
+          setAudioUrl(URL.createObjectURL(file));
+        };
+      };
+      
+      reader.readAsDataURL(file);
     }
   };
 
@@ -329,7 +352,7 @@ export default function CaptionGenerator() {
                   {session ? "Click to upload" : "Audio Upload"}
                 </p>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                  MP3, WAV, or M4A (max. 10MB)
+                  MP3, WAV (max. 10MB, 2 min)
                 </p>
               </div>
             </div>
@@ -428,7 +451,7 @@ export default function CaptionGenerator() {
      
 
       <div className="text-center text-xs sm:text-sm text-muted-foreground pb-4 sm:pb-8">
-        <p>Supported formats: MP3, WAV• Max file size: 10MB</p>
+        <p>Supported formats: MP3, WAV• Max file size: 10MB, max 2 min</p>
       </div>
     </div>
   );

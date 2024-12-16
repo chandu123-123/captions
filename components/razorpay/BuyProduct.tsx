@@ -40,7 +40,8 @@ interface RazorpayOptions {
 
 const BuyProduct = ({ details }: { details: Details }) => {
   const router = useRouter();
-
+  console.log("dfsdfsdfsddfsdf")
+console.log(details,"dfsdfsdfsdf");
   useEffect(() => {
     // Load Razorpay script
     const loadRazorpay = async () => {
@@ -57,6 +58,7 @@ const BuyProduct = ({ details }: { details: Details }) => {
 
     try {
       // Make API call to the serverless API
+      console.log("details","details");
       const response = await fetch(`${process.env.NEXT_PUBLIC_LOCALURL}/api/razorpay`, {
         method: "POST",
         headers: {
@@ -67,21 +69,21 @@ const BuyProduct = ({ details }: { details: Details }) => {
           detail: details.details,
         }),
       });
-
+      console.log(response,"response");
       const { order } = await response.json();
-
+     console.log(order,"order");
       if (!order) {
         console.error("Order creation failed");
         return;
       }
-
+    console.log(order,"order");
       const options: RazorpayOptions = {
-        key: key!,
-        name: "FresheResume",
+        key: "rzp_test_Jdx55LsTH7E54G",
+        name: "IndieCaptions",
         currency: order.currency,
         amount: order.amount,
         order_id: order.id,
-        description: "Payment for Downloading Resume",
+        description: "Payment for Credits",
         handler: async function (response: RazorpayResponse) {
           try {
             const data = await fetch(`${process.env.NEXT_PUBLIC_LOCALURL}/api/paymentverify`, {
@@ -107,7 +109,7 @@ const BuyProduct = ({ details }: { details: Details }) => {
           }
         },
         prefill: {
-          name: "FresherResume",
+          name: "IndieCaptions",
           email: details.email,
         },
       };
@@ -137,3 +139,7 @@ const BuyProduct = ({ details }: { details: Details }) => {
 };
 
 export default BuyProduct;
+
+
+
+
