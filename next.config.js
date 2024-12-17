@@ -1,24 +1,29 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    appDir: true,  // Enables the App Router (app/ directory)
+    serverActions: true,
+    serverComponentsExternalPackages: ['@google-cloud/speech'],
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  images: { unoptimized: true },
-  compiler: {
-    // Remove all console logs
-     removeConsole: process.env.NODE_ENV === "production"
-  },
-  swcMinify: true, 
-  terserOptions: {
-    compress: {
-      drop_console: true,  // Ensure console logs are removed
+  api: {
+    responseLimit: false,
+    bodyParser: {
+      sizeLimit: '10mb',
     },
-    output: {
-      comments: false,  // Remove comments in production build
-    },
+  },
+  httpAgentOptions: {
+    keepAlive: true,
+  },
+  serverRuntimeConfig: {
+    maxDuration: 300, // 5 minutes
+  },
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals.push({
+        'utf-8-validate': 'commonjs utf-8-validate',
+        'bufferutil': 'commonjs bufferutil',
+      });
+    }
+    return config;
   },
 };
 
