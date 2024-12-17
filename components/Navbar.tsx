@@ -90,19 +90,71 @@ export default function Navbar() {
 
             {/* Mobile menu button */}
             <div className="flex sm:hidden">
-              <div
+              <button
                 onClick={toggleMenu}
-                className="p-2 cursor-pointer text-gray-500 hover:text-gray-700 focus:outline-none"
-                aria-label="Toggle menu"
+                className="p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none"
               >
                 {isMenuOpen ? (
                   <X className="h-6 w-6" />
                 ) : (
                   <Menu className="h-6 w-6" />
                 )}
-              </div>
+              </button>
             </div>
           </div>
+
+          {/* Mobile menu */}
+          {isMenuOpen && (
+            <div className="sm:hidden border-t border-gray-200">
+              <div className="space-y-1 px-2 pb-3 pt-2">
+                {session ? (
+                  <>
+                    <div className="px-3 py-2 text-sm font-medium text-muted-foreground">
+                      Credits: {credits}
+                    </div>
+                    <button
+                      onClick={() => {
+                        setShowFeedback(true);
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm font-medium hover:bg-muted rounded-md flex items-center gap-2"
+                    >
+                      <MessageSquarePlus className="h-4 w-4" />
+                      Feedback
+                    </button>
+                    <Link
+                      href="/pricing"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="block px-3 py-2 text-sm font-medium hover:bg-muted rounded-md"
+                    >
+                      Buy Credits
+                    </Link>
+                    <button
+                      onClick={() => {
+                        signOut();
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm font-medium hover:bg-muted rounded-md"
+                    >
+                      Sign Out
+                    </button>
+                  </>
+                ) : (
+                  <div className="px-3 py-2">
+                    <LoadingButton
+                      variant="default"
+                      size="sm"
+                      onClick={handleSignIn}
+                      loading={isSigningIn}
+                      className="w-full font-medium"
+                    >
+                      Sign In
+                    </LoadingButton>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </nav>
 
