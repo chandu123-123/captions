@@ -48,6 +48,7 @@ interface RequestData {
   target: string;
   email: string;
   source: string;
+  format: string;
 }
 
 // Define the possible structure of the response content
@@ -79,7 +80,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     const data: RequestData = await req.json();
-    const { filecont, target, email, source } = data;
+    const { filecont, target, email, source, format } = data;
 
     if (!isEmail(email)) {
       return NextResponse.json({ msg: "Invalid email format" }, { status: 400 });
@@ -114,7 +115,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           messages: [
             {
               role: "user",
-              content: `Generate only a subtitle file that transliterates this ${source} content into ${target} phonetics. Do not add any explanations or additional text: ${chunk}`,
+              content: format === "phonetic" 
+                ? `Generate only a subtitle file that transliterates this ${source} content into ${target} phonetics. Do not add any explanations or additional text: ${chunk}`
+                : `Translate this ${source} content to ${target}. Keep the same format and timing. Only provide the translation without any additional text: ${chunk}`,
             },
           ],
         });

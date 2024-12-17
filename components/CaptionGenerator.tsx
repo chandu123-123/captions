@@ -16,6 +16,7 @@ import { useTypewriter, Cursor } from 'react-simple-typewriter';
 import { motion } from 'framer-motion';
 import { useCreditsStore } from '@/store/useCreditsStore';
 import CaptionGuidelines from "./CaptionGuidelines";
+import { FeedbackDialog } from "./FeedbackDialog";
 
 interface ClaudeResponse {
   msg: string;
@@ -35,6 +36,8 @@ export default function CaptionGenerator() {
   const initializeCredits = useCreditsStore((state) => state.initializeCredits);
   const credits = useCreditsStore((state) => state.credits); // Access the current credits
   const deductCredits = useCreditsStore((state) => state.deductCredits);
+
+  const [showFeedback, setShowFeedback] = useState(false);
 
   useEffect(() => {
     if (session) {
@@ -160,15 +163,21 @@ export default function CaptionGenerator() {
      let data2=data.srtContent
      console.log(data2)
      if(targetLanguage!=sourceLanguage){
-      const claude= await fetch(`/api/claudeai`,{
+      const claude = await fetch(`/api/claudeai`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body:JSON.stringify({ filecont:data.srtContent,target:targetLanguage,email:session.user.email,source:sourceLanguage})
+        body: JSON.stringify({ 
+          filecont: data.srtContent,
+          target: targetLanguage,
+          email: session.user.email,
+          source: sourceLanguage,
+          format: outputFormat
+        })
       });
       const data4 = await claude.json();
-      data2=data4.msg
+      data2 = data4.msg;
       if(!claude.ok){
         throw new Error("something is wrong")
       }
@@ -182,7 +191,7 @@ export default function CaptionGenerator() {
 
       const dat = await respons.json();
       console.log(dat)
-      const isSuccess = deductCredits(1);
+      const isSuccess = deductCredits(5);
       
       const utf8Content = convertToUTF8(data2);
       downloadSRT(utf8Content);
@@ -191,6 +200,8 @@ export default function CaptionGenerator() {
         title: "Success!",
         description: "Your captions have been generated successfully.",
       });
+      
+      setShowFeedback(true);
     } catch (error) {
       toast({
         title: "Error",
@@ -413,19 +424,8 @@ export default function CaptionGenerator() {
                   <SelectValue placeholder="Select format" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="translated">Convert</SelectItem>
-                  {/* <SelectItem 
-                    value="phonetic"
-                    disabled={!isPhoneticSupported(sourceLanguage)}
-                  >
-                    Phonetic (Romanized)
-                  </SelectItem>
-                  <SelectItem 
-                    value="both"
-                    disabled={!isPhoneticSupported(sourceLanguage)}
-                  >
-                    Both Translation & Phonetic
-                  </SelectItem> */}
+                  <SelectItem value="translation">Translation</SelectItem>
+                  <SelectItem value="phonetic">Phonetic Translation</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -454,6 +454,12 @@ export default function CaptionGenerator() {
       <div className="text-center text-xs sm:text-sm text-muted-foreground pb-4 sm:pb-8">
         <p>Supported formats: MP3, WAV• Max file size: 10MB, max 2 min</p>
       </div>
+
+      <FeedbackDialog 
+        isOpen={showFeedback}
+        onClose={() => setShowFeedback(false)}
+        userEmail={session?.user?.email || ""}
+      />
     </div>
   );
 }

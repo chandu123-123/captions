@@ -11,49 +11,65 @@ import { UserLogin } from '@/app/lib/model';
 import { dbConnection } from '@/app/lib/database';
 import { isEmail } from 'validator';
 
+// Add buffer size limit
+const MAX_BUFFER_SIZE = 10 * 1024 * 1024; // 10MB
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // Function to detect silence in audio buffer
 const detectSilence = async (buffer: Buffer, sampleRate: number, channels: number) => {
-  const SILENCE_THRESHOLD = 0.01; // Adjust this value based on your needs
-  const MIN_SILENCE_DURATION = 0.2; // Minimum silence duration in seconds
-  const samplesPerChannel = buffer.length / (channels * 2); // Assuming 16-bit audio
-  const silenceSegments = [];
-  let silenceStart = null;
+  const SILENCE_THRESHOLD = 0.01;
+  const MIN_SILENCE_DURATION = 0.2;
+  const BYTES_PER_SAMPLE = 2; // 16-bit audio = 2 bytes per sample
   
-  for (let i = 0; i < samplesPerChannel; i++) {
-    let sum = 0;
-    // Calculate RMS value for all channels at this point
-    for (let channel = 0; channel < channels; channel++) {
-      const sampleIndex = i * channels * 2 + channel * 2;
-      const sample = buffer.readInt16LE(sampleIndex) / 32768.0;
-      sum += sample * sample;
-    }
-    const rms = Math.sqrt(sum / channels);
+  try {
+    // Calculate total samples while preventing buffer overrun
+    const totalBytes = buffer.length;
+    const samplesPerChannel = Math.floor(totalBytes / (channels * BYTES_PER_SAMPLE));
+    const silenceSegments = [];
+    let silenceStart = null;
     
-    if (rms < SILENCE_THRESHOLD) {
-      if (silenceStart === null) {
-        silenceStart = i / sampleRate;
+    for (let i = 0; i < samplesPerChannel; i++) {
+      let sum = 0;
+      
+      for (let channel = 0; channel < channels; channel++) {
+        const sampleIndex = i * channels * BYTES_PER_SAMPLE + channel * BYTES_PER_SAMPLE;
+        
+        // Check if we're still within buffer bounds
+        if (sampleIndex + 1 < totalBytes) {
+          const sample = buffer.readInt16LE(sampleIndex) / 32768.0;
+          sum += sample * sample;
+        }
       }
-    } else if (silenceStart !== null) {
-      const silenceEnd = i / sampleRate;
-      const duration = silenceEnd - silenceStart;
-      if (duration >= MIN_SILENCE_DURATION) {
-        silenceSegments.push({
-          startTime: silenceStart,
-          endTime: silenceEnd,
-          start: silenceStart,
-          end: silenceEnd,
-          text: '[Silence]'
-        });
+      
+      const rms = Math.sqrt(sum / channels);
+      
+      if (rms < SILENCE_THRESHOLD) {
+        if (silenceStart === null) {
+          silenceStart = i / sampleRate;
+        }
+      } else if (silenceStart !== null) {
+        const silenceEnd = i / sampleRate;
+        const duration = silenceEnd - silenceStart;
+        if (duration >= MIN_SILENCE_DURATION) {
+          silenceSegments.push({
+            startTime: silenceStart,
+            endTime: silenceEnd,
+            start: silenceStart,
+            end: silenceEnd,
+            text: '[Silence]'
+          });
+        }
+        silenceStart = null;
       }
-      silenceStart = null;
     }
+    
+    return silenceSegments;
+  } catch (error) {
+    console.error('Error in detectSilence:', error);
+    return []; // Return empty array if silence detection fails
   }
-  
-  return silenceSegments;
 };
 
 const getAudioProperties = async (audioFile: File): Promise<{ sampleRate: number, channels: number }> => {
@@ -128,6 +144,14 @@ export async function POST(request: Request) {
     if (!audioFile || !sourceLanguage || !targetLanguage) {
       return NextResponse.json(
         { error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    // Check file size before processing
+    if (audioFile.size > MAX_BUFFER_SIZE) {
+      return NextResponse.json(
+        { error: 'File size exceeds limit' },
         { status: 400 }
       );
     }

@@ -78,7 +78,7 @@ console.log(details,"dfsdfsdfsdf");
       }
     console.log(order,"order");
       const options: RazorpayOptions = {
-        key: "rzp_live_EK5ZQ28uT39Z04",
+        key: "rzp_live_EK5ZQ28uT39Z04",//rzp_test_Jdx55LsTH7E54G  //rzp_live_EK5ZQ28uT39Z04
         name: "IndieCaptions",
         currency: order.currency,
         amount: order.amount,
