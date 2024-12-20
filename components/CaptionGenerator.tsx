@@ -39,17 +39,146 @@ export default function CaptionGenerator() {
 
   const [showFeedback, setShowFeedback] = useState(false);
 
+  const [transcriptionId, setTranscriptionId] = useState<string | null>(null);
+  const pollingInterval = useRef<NodeJS.Timeout>();
+
   useEffect(() => {
     if (session) {
       initializeCredits(session.user.email);
     }
   }, [session]);
 
+  const getLanguageName = (languageCode: string): string => {
+    // Handle common variations of language codes
+    const normalizedCode = languageCode?.split('-')[0]?.toLowerCase(); // e.g., 'en-US' -> 'en'
+    const language = languages.find(
+      lang => lang.code.toLowerCase().startsWith(normalizedCode)
+    );
+    return language ? language.name : 'English'; // Default to English if not found
+  };
+
+  useEffect(() => {
+    if (transcriptionId && isProcessing) {
+      console.log("Starting polling for transcription:", transcriptionId);
+      
+      const checkResult = async () => {
+        try {
+          const response = await fetch(`/api/webhook/gladia?id=${transcriptionId}`);
+          const data = await response.json();
+          console.log("Polling result:", data); // This will show the status in console
+
+          if (data.status === 'completed' && data.srtContent) {
+            console.log("Transcription completed, processing result");
+            console.log(data)
+            // Clear polling
+            if (pollingInterval.current) {
+              clearInterval(pollingInterval.current);
+            }
+
+            let finalContent = data.srtContent;
+            
+            // Get the detected source language name
+            const detectedSourceLang = getLanguageName(data.source);
+            console.log("Detected source language:",targetLanguage, data.source, "->", detectedSourceLang);
+
+            // Handle translation if needed
+            if (detectedSourceLang !== targetLanguage) {
+              try {
+                console.log("Translating with Claude from", detectedSourceLang, "to", targetLanguage);
+                const claude = await fetch('/api/claudeai', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({ 
+                    filecont: data.srtContent,
+                    target: targetLanguage,
+                    email: session?.user?.email,
+                    source: detectedSourceLang, // Pass the language name instead of code
+                    format: outputFormat
+                  })
+                });
+                
+                if (!claude.ok) {
+                  throw new Error('Translation failed');
+                }
+                
+                const translatedData = await claude.json();
+                finalContent = translatedData.msg;
+                console.log("Translation completed");
+              } catch (error) {
+                console.error('Translation error:', error);
+                toast({
+                  title: "Translation Error",
+                  description: `Failed to translate from ${detectedSourceLang} to ${targetLanguage}. Please try again.`,
+                  variant: "destructive",
+                });
+                setIsProcessing(false);
+                return;
+              }
+            }
+
+            // Process credits and download
+            try {
+              const creditResponse = await fetch(`/api/decredits?email=${session?.user?.email}`);
+              if (creditResponse.ok) {
+                const isSuccess = deductCredits(5);
+                
+                // Download file
+                const utf8Content = convertToUTF8(finalContent);
+                const blob = new Blob([utf8Content], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'captions.srt';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                toast({
+                  title: "Success!",
+                  description: "Your captions have been generated successfully.",
+                });
+                setShowFeedback(true);
+              }
+            } catch (error) {
+              console.error('Credit processing error:', error);
+              toast({
+                title: "Error",
+                description: "Failed to process credits. Please contact support.",
+                variant: "destructive",
+              });
+            }
+
+            setIsProcessing(false);
+          } else {
+            console.log("Still processing, status:", data.status);
+          }
+        } catch (error) {
+          console.error('Polling error:', error);
+        }
+      };
+
+      // Start polling every 5 seconds
+      pollingInterval.current = setInterval(checkResult, 20000);
+      
+      // Run initial check immediately
+      checkResult();
+
+      return () => {
+        if (pollingInterval.current) {
+          clearInterval(pollingInterval.current);
+        }
+      };
+    }
+  }, [transcriptionId, isProcessing, session, targetLanguage, sourceLanguage, outputFormat, deductCredits]);
+
   const [sourceText] = useTypewriter({
     words: [
       'यह दुनिया बहुत खूबसूरत है', // Hindi: This world is very beautiful
       'नमस्ते दुनिया',              // Hindi: Hello World
-      'வணக்கம் உலகம்',            // Tamil: Hello World
+      'வணக்கம் உகம்',            // Tamil: Hello World
       'ನಮಸ್ಕಾರ ಜಗತ್ತು',            // Kannada: Hello World               // English
       'నమస్కారం ప్రపంచం',          // Telugu: Hello World
     ],
@@ -130,21 +259,16 @@ export default function CaptionGenerator() {
     formData.append('outputFormat', outputFormat);
 
     try {
-      
-
-     if (!session) return;
-  
-     if (credits === 0) {
-      toast({
-        title: "Insufficient Credits",
-        description: "Please add credits to generate captions.",
-        variant: "destructive",
-      });
-      return;
-     }
-
-
-   
+      if (!session) return;
+    
+      if (credits === 0) {
+        toast({
+          title: "Insufficient Credits",
+          description: "Please add credits to generate captions.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       const response = await fetch('/api/transcribe', {
         method: 'POST',
@@ -155,60 +279,24 @@ export default function CaptionGenerator() {
         throw new Error('Failed to process audio');
       }
           
-      // await updateUserCredits(session?.user.email,1)
-     
-        
       const data = await response.json();
-   console.log("hello")
-     let data2=data.srtContent
-     console.log(data2)
-     if(targetLanguage!=sourceLanguage){
-      const claude = await fetch(`/api/claudeai`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          filecont: data.srtContent,
-          target: targetLanguage,
-          email: session.user.email,
-          source: sourceLanguage,
-          format: outputFormat
-        })
-      });
-      const data4 = await claude.json();
-      data2 = data4.msg;
-      if(!claude.ok){
-        throw new Error("something is wrong")
-      }
-    }
-    const respons = await fetch(`/api/decredits?email=${session?.user.email}`,{
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const dat = await respons.json();
-      console.log(dat)
-      const isSuccess = deductCredits(5);
+      console.log("Transcription started with ID:", data.transcriptionId);
       
-      const utf8Content = convertToUTF8(data2);
-      downloadSRT(utf8Content);
-
+      // Only set the transcription ID to trigger the polling
+      setTranscriptionId(data.transcriptionId);
+      
       toast({
-        title: "Success!",
-        description: "Your captions have been generated successfully.",
+        title: "Processing",
+        description: "Your audio is being processed. Please wait...",
       });
-      
-      setShowFeedback(true);
+
     } catch (error) {
+      console.error('Submission error:', error);
       toast({
         title: "Error",
-        description: "Failed to generate captions. Please try again.",
+        description: "Failed to start transcription. Please try again.",
         variant: "destructive",
       });
-    } finally {
       setIsProcessing(false);
     }
   };
@@ -393,8 +481,8 @@ export default function CaptionGenerator() {
                 </SelectTrigger>
                 <SelectContent>
                   {languages.map((lang) => (
-                    <SelectItem key={lang.code} value={lang.code}>
-                      {lang.name} {isPhoneticSupported(lang.code) && '(Phonetic Available)'}
+                    <SelectItem key={lang.code} value={lang.name}>
+                      {lang.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -409,7 +497,7 @@ export default function CaptionGenerator() {
                 </SelectTrigger>
                 <SelectContent>
                   {languages.map((lang) => (
-                    <SelectItem key={lang.code} value={lang.code}>
+                    <SelectItem key={lang.code} value={lang.name}>
                       {lang.name}
                     </SelectItem>
                   ))}
